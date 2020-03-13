@@ -5,3 +5,5 @@ all:
 	bibtex limbic
 	latex limbic
 	dvipdf limbic
+	htlatex limbic
+	cp limbix.html index.html

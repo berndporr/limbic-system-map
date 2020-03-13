@@ -2,6 +2,7 @@
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{natbib}
+\usepackage{hyperref}
 
 \let\oldsection\section
 \renewcommand\section{\clearpage\oldsection}
@@ -13,6 +14,14 @@
 \begin{document}
 
 \maketitle
+
+\ifx\HCode\undefined \else
+\HCode{
+  <iframe id='drawioiframe' width='90\%' height='500\%'></iframe>
+  <script src="drawio_ro.js"></script>
+}
+  \fi
+
 
 \section{Introduction}
 This page is a hybrid of an open ended circuit diagram with hyperlinks which point to the wiki underneath which in turn points to references which back up the connections. Think of google maps meets wikipedia.
