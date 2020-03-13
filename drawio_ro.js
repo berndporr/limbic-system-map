@@ -15,13 +15,10 @@ window.addEventListener('message',function(evt) {
 	if (msg.event == 'init')
 	{
 	    var client = new XMLHttpRequest();
-	    var u = window.location.href+'/limbic.drawio';
-	    // alert(u);
+	    var u = 'limbic.drawio';
 	    client.open('GET', u);
 	    client.onreadystatechange = function() {
-		// Sends the data URI with embedded XML to editor
 		iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xmlpng: client.responseText}), '*');
-		alert(client.responseText);
 	    }
 	    client.send();
 	}
