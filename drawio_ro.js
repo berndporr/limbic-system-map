@@ -15,7 +15,7 @@ window.addEventListener('message',function(evt) {
 	if (msg.event == 'init')
 	{
 	    var client = new XMLHttpRequest();
-	    var u = 'limbic.drawio';
+	    var u = 'limbic-map.xml';
 	    client.open('GET', u);
 	    client.onreadystatechange = function() {
 		iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xmlpng: client.responseText}), '*');
