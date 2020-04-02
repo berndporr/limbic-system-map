@@ -3,9 +3,7 @@
 \usepackage{caption}
 \usepackage{natbib}
 \usepackage{hyperref}
-
-\let\oldsection\section
-\renewcommand\section{\clearpage\oldsection}
+\usepackage{html,makeidx,epsf}
 
 \title{Limbic system}
 \author{Bernd Porr\footnote{BerndPorr@glasgow.ac.uk}, Ailsa Millen, Graeme Hattan, Maria Thomson}
@@ -14,24 +12,7 @@
 \begin{document}
 
 
-\ifx\HCode\undefined \else
-\HCode{
-Bla
-}
-\fi
-
-
 \maketitle
-
-\ifx\HCode\undefined \else
-\HCode{
-  <div class="embed-responsive embed-responsive-21by9">
-    <iframe class="embed-responsive-item" id='drawioiframe'></iframe>
-    <script src="drawio_ro.js"></script>
-  </div>
-}
-\fi
-
 
 \section{Introduction}
 This page is a hybrid of an open ended circuit diagram with hyperlinks which point to the wiki underneath which in turn points to references which back up the connections. Think of google maps meets wikipedia.
@@ -551,9 +532,9 @@ Cohen et al’s 2012 research found that VTA GABA neurons signalled expected rew
 \includegraphics[width=0.2\textwidth]{by.eps}
 
 
-\bibliographystyle{apalike}
+\bibliographystyle{abbrvnat}
 
-\bibliography{limbic}
+\bibliography{limbicref}
 
 
 \end{document}
