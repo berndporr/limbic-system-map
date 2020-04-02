@@ -10,7 +10,7 @@ window.addEventListener('message',function(evt) {
     if (evt.data.length > 0)
     {
 	var msg = JSON.parse(evt.data);
-	
+
 	// Received if the editor is ready
 	if (msg.event == 'init')
 	{
@@ -18,7 +18,7 @@ window.addEventListener('message',function(evt) {
 	    var u = 'limbic-map.xml';
 	    client.open('GET', u);
 	    client.onreadystatechange = function() {
-		iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xmlpng: client.responseText}), '*');
+		iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xml: client.responseText}), '*');
 	    }
 	    client.send();
 	}
