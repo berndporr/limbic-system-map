@@ -5,5 +5,5 @@ all:
 	bibtex limbic
 	latex limbic
 	dvipdf limbic
-	htlatex limbic "htmlconfig.cfg,charset=utf-8" " -cunihtf -utf8"
+	htlatex limbic "htmlconfig.cfg,NoFonts,charset=utf-8,xhtml" " -cunihtf -utf8"
 	cp limbic.html index.html
