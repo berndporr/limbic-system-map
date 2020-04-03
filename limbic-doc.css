@@ -15,13 +15,6 @@ BIG.XXLARGE		{ font-size : x-large  }
 BIG.HUGE		{ font-size : larger   }
 BIG.XHUGE		{ font-size : xx-large }
 
-/* heading styles */
-H1		{  }
-H2		{  }
-H3		{  }
-H4		{  }
-H5		{  }
-
 /* mathematics styles */
 DIV.displaymath		{ }	/* math displays */
 TD.eqno			{ }	/* equation-number cells */
