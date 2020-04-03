@@ -4,6 +4,16 @@
 \usepackage{natbib}
 \usepackage{hyperref}
 \usepackage{html}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  filecolor=blue,      
+  urlcolor=blue,
+  pdftitle={Limbic system map},
+  bookmarks=true
+}
+
 
 \title{Limbic system map}
 \author{Bernd Porr\footnote{BerndPorr@glasgow.ac.uk}, Maria Thomson and Ailsa Millen}
@@ -15,10 +25,16 @@
 \maketitle
 
 \begin{latexonly}
-\begin{figure}[!htb]
+\begin{figure}[!thb]
     \begin{center}
     \includegraphics[width=\textwidth]{limbic-map}
     \end{center}
+    \caption{Map of the limbic system. HC: Hippocampus, mPFC: medial prefrontal
+  cortex, OFC: orbitofrontal cortex, DRN: dorsal Raphe nucleus, m-shell: medial shell,
+  l-shell: lateral shell, core: nucleus accumbens core, VTA: ventral tegmental
+  area, m-VP: medial ventral pallidum, vl-VP: ventrolateral ventral pallidum,
+  EP: Entopeduncular Nucleus, RMTg: Rostral Medial Tegmental Nucleus,
+  LH: lateral hypothalamus. \href{https://github.com/berndporr/limbic-system/blob/master/limbic-map.pdf}{Link to the full resolution PDF.}\label{linbic-map}}
 \end{figure}
 \end{latexonly}
 
@@ -294,52 +310,6 @@ agonists \citep{stanley93} and that stimulation of GABAergic cells in the LH inh
 
 
 
-\section{Nucleus Accumbens Core}
-
-\subsection{Afferents}
-
-The NAc core receives inputs from the dorsal-medial prefrontal cortex and the hippocampus \citep{brog93}.
-
-\subsection{Efferents}
-
-There are two distinct output pathways from the NAcc core which have its origins from the two sub-populations of neurons in the NAcc core. The one sub-population carries mainly D1 receptors and the other one carries mainly D2 receptors \citep{kelley04} \citep{Humphries2010}. 
-
-\subsubsection{Direct pathway}
-
-The D1 receptor carrying neurons feed directly into the SNr and are able to inhibit tonically active SNr neurons, thus the NAcc core is able to disinhibit motor programs. 
-
-\subsubsection{Indirect pathway}
-
-There is an indirect pathway via the VP to the SNr originating from the NAcc core. In contrast to the direct pathway these neurons in the indirect pathway carry mainly D2 receptors which are inhibitory in nature. D2 receptors are very sensitive to low DA concentrations and will react to the tonic DA concentrations. 
-
-
-
-
-\section{Nucleus Accumbens Shell}
-
-The shell can be further divided into the medial and lateral shell \citep{Ikemoto2007} \citep{Usuda1998} used in the model by \citep{Humphries2010}.
-
-\subsection{Medial Shell}
-
-The medial Shell projects to the medial Ventral Pallidum (VP) \citep{Ikemoto2007}.
-
-\subsection{Lateral Shell}
-
-The lateral shall projects to the ventrolateral Ventral Pallium (VP) \citep{Ikemoto2007}.
-
-
-\subsection{Behavioural experiments}
-
-The shell seems to be responsible for behavioural flexibility meaning that it controls the animal's ability to shift to another target when the reward is lost \citep{Aquili2014}
-
-\subsection{Function}
-
-Overall the Shell seems to learn the stimuli which are associated with a reward, and thus enhances the future salience of those stimuli \citep{Cassidy2017}.
-
-In this context it is also interesting that shell DA also tracks rather the inventive value than the reward prediction error \citep{Sackett2017} which probably means that the VTA has regions which work with the shell and that they are distinct from the core.
-
-
-
 
 \section{Nucleus Accumbens (NAcc)}
 
@@ -347,10 +317,6 @@ The Nacc is the ventral extension of the striatum, and therefore also called the
 
 The accumbens has two major subterritories: the shell and the core 
 \citep{heimer91} where the shell can be further subdivided \citep{Usuda1998} in lateral and medial parts and the core rather depending on its D1 or D2 receptors.
-
-[[nacc-shell]]
-
-[[nacc-core]]
 
 \subsection{Behavioural experiments}
 
@@ -368,6 +334,56 @@ By measuring the DA concentration in both the core and shell \citep{Saddoris2015
 
 It's well known the bursts of dopamine cause LTP in conjunction with pre- and (possible) postsynpatic activity (so called 3 factor Hebbian rule) or heterosynaptic LTP. However \citep{Goto2005} showed that D1 receptors cause LTP on hippocampal fibres whereas D2 receptors control the cortical inputs in the opposite way.
 It appears to be that 5HT causes retrograde cannabinoid (CB) release which inhibits pre-synaptic GLU release \citep{Burattini2014}. However, also postsynaptic HFS causes CB1 mediated depression. \citep{Mathur2011} tested this more thoroughly in that they conclude that 5HT actually causes presynaptic inhibition via the 5HT1B receptor, with that LTD and that HFS can have a similar effect by releasing CB.
+
+
+
+
+
+
+
+
+\subsection{Nucleus Accumbens Core}
+
+\subsubsection{Afferents}
+
+The NAc core receives inputs from the dorsal-medial prefrontal cortex and the hippocampus \citep{brog93}.
+
+\subsubsection{Efferents}
+
+There are two distinct output pathways from the NAcc core which have its origins from the two sub-populations of neurons in the NAcc core. The one sub-population carries mainly D1 receptors and the other one carries mainly D2 receptors \citep{kelley04} \citep{Humphries2010}. 
+
+\paragraph{Direct pathway}
+The D1 receptor carrying neurons feed directly into the SNr and are able to inhibit tonically active SNr neurons, thus the NAcc core is able to disinhibit motor programs. 
+
+\paragraph{Indirect pathway}
+There is an indirect pathway via the VP to the SNr originating from the NAcc core. In contrast to the direct pathway these neurons in the indirect pathway carry mainly D2 receptors which are inhibitory in nature. D2 receptors are very sensitive to low DA concentrations and will react to the tonic DA concentrations. 
+
+
+
+
+\subsection{Nucleus Accumbens Shell}
+
+The shell can be further divided into the medial and lateral shell \citep{Ikemoto2007} \citep{Usuda1998} used in the model by \citep{Humphries2010}.
+
+\subsubsection{Medial Shell}
+
+The medial Shell projects to the medial Ventral Pallidum (VP) \citep{Ikemoto2007}.
+
+\subsubsection{Lateral Shell}
+
+The lateral shall projects to the ventrolateral Ventral Pallium (VP) \citep{Ikemoto2007}.
+
+
+\subsubsection{Behavioural experiments}
+
+The shell seems to be responsible for behavioural flexibility meaning that it controls the animal's ability to shift to another target when the reward is lost \citep{Aquili2014}
+
+\subsubsection{Function}
+
+Overall the Shell seems to learn the stimuli which are associated with a reward, and thus enhances the future salience of those stimuli \citep{Cassidy2017}.
+
+In this context it is also interesting that shell DA also tracks rather the inventive value than the reward prediction error \citep{Sackett2017} which probably means that the VTA has regions which work with the shell and that they are distinct from the core.
+
 
 
 
@@ -539,7 +555,11 @@ Cohen et al’s 2012 research found that VTA GABA neurons signalled expected rew
 
 \section*{License}
 
-\input{LICENSE}
+This work is licensed under the Creative Commons
+Attribution-ShareAlike 4.0 International License. To view a copy of
+this license, visit
+\url{http://creativecommons.org/licenses/by-sa/4.0/} or send a letter
+to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 
 \bibliographystyle{apalike}
 
