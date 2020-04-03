@@ -23,3 +23,8 @@ TD.eqno			{ }	/* equation-number cells */
 /* document-specific styles come next */
 DIV.navigation		{   }
 SPAN.arabic		{   }
+
+
+.map-instr {
+    color: grey;
+}
