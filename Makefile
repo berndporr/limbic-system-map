@@ -7,5 +7,5 @@ all:
 	bibtex limbic-doc
 	pdflatex limbic-doc
 	latex2html -init_file latex2html.config limbic-doc.tex
-	cp limbic-doc/*.html limbic-doc/*.png limbic-doc/*.css .
+	cp limbic-doc/*.html limbic-doc/*.css .
 	git add *html *png *css
