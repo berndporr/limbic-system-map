@@ -3,9 +3,11 @@
 This is the underlying repository which documents the limbic system
 predominantly of the rat. Please visit:
 
-https://berndporr.github.io/limbic-system/
+https://berndporr.github.io/limbic-system-map/
 
-## Document formats and software
+![alt tag](screenshot.png)
+
+## Document-formats and software used
 
 Both the map and the text have open data formats and have been
 created with open source software.
