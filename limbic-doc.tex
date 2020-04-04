@@ -21,21 +21,25 @@
 
 \begin{document}
 
-
 \maketitle
 
+\begin{quote}
+  A hand curated map of the limbic system backed up by anatomical and electrophysiologcial
+  refrences.
+\end{quote}
+
 \begin{latexonly}
-\begin{figure}[!thb]
-    \begin{center}
+  \begin{center}
     \includegraphics[width=\textwidth]{limbic-map}
-    \end{center}
-    \caption{Map of the limbic system. HC: Hippocampus, mPFC: medial prefrontal
-  cortex, OFC: orbitofrontal cortex, DRN: dorsal Raphe nucleus, m-shell: medial shell,
-  l-shell: lateral shell, core: nucleus accumbens core, VTA: ventral tegmental
-  area, m-VP: medial ventral pallidum, vl-VP: ventrolateral ventral pallidum,
-  EP: Entopeduncular Nucleus, RMTg: Rostral Medial Tegmental Nucleus,
-  LH: lateral hypothalamus. \href{https://github.com/berndporr/limbic-system/blob/master/limbic-map.pdf}{Link to the full resolution PDF.}\label{linbic-map}}
-\end{figure}
+  \end{center}
+      {\footnotesize
+        HC: Hippocampus, mPFC: medial prefrontal
+        cortex, OFC: orbitofrontal cortex, DRN: dorsal Raphe nucleus, m-shell: medial shell,
+        l-shell: lateral shell, core: nucleus accumbens core, VTA: ventral tegmental
+        area, m-VP: medial ventral pallidum, vl-VP: ventrolateral ventral pallidum,
+        EP: Entopeduncular Nucleus, RMTg: Rostral Medial Tegmental Nucleus,
+        LH: lateral hypothalamus. \href{https://github.com/berndporr/limbic-system/blob/master/limbic-map.pdf}{Link to the full resolution PDF.}
+      }
 \end{latexonly}
 
 
@@ -43,21 +47,202 @@
 \tableofcontents
 
 \section{Introduction}
-This page is a hybrid of a map and a explanations underneath underneath which in turn points to references which back up the connections.
+This document is a hybrid of a map and text
+underneath which in turn points to references which back up the
+connections.
 
-The main aim is to have a map of the limbic system which is supported by references which then in turn can inform computer models which simulate behavioural experiments.
-
-
+In contrast to ``self-organised'' models which assume that data
+organises itself to a brain structure which then acts in its
+environment, this project here starts from \textsl{curation} where
+every reference needs to be checked manually and then worked into this
+map. There are a number of reasons why curation is central:
+\begin{itemize}
+\item Uncertainty of the data: neurophysiological data never
+  provides 100\% certainty. Data is noisy and there will be
+  almost every time a study which contradicts the findings. However,
+  through experience one learns to distinguish between spurious
+  results and those which will consolidate. This is not a simple
+  process eliminating outliers but to look at the studies from
+  the curator's experience which are most likely important
+  and which will be superseded.
+\item The human factor: data is never presented in an objective
+  vacuum. We assume every paper is to a certain degree biased
+  fitting the author's system view of the limbic system. It is
+  thus important to compare different views and then draw
+  conclusions which are most likely and make sense in terms
+  of behaviour and signal flow.
+\item Closed loop: at the end an animal needs to act according to
+  sensory stimuli. This dictates a certain direction of information
+  flow from sensor to motor and then back to the sensor via the
+  environment. The model here needs to work in a closed loop
+  scenario because the agent acts to obtain rewards. This is
+  only possible by taking into account closed loop and using this
+  as a constraint.
+\end{itemize}
 
 
 \subsection{Review articles}
 \begin{itemize}
-\item This article by Castro and Berridge promotes their long standing differentiation between 'wanting' and 'liking' \citep{Berridge2009} now updated by 'hedonic hot spots' \citep{Castro2015}.
-\item Berthoud's article features fantastic connection diagrams between the different nuclei of the limbic system \citep{Berthoud04}.
-\item Zahm again provides very detailed anatomical connection diagrams and is a must read \citep{Zahm00}.
-\item The review by  Abbas Khani and Gregor Rainer focusses on the roles of the different nuclei, how they interact, how they implement reinforcement guided decision making and which forms are out there (reversal, go no go etc). A very balanced article which, for example, not just cites the prediction error paradigm of DA but reports also the other roles DA \citep{Khani2016}.
+\item This article by Castro and Berridge promotes their long standing
+  differentiation between 'wanting' and 'liking' \citep{Berridge2009}
+  now updated by 'hedonic hot spots' \citep{Castro2015}.
+\item Berthoud's article features fantastic connection diagrams
+  between the different nuclei of the limbic system
+  \citep{Berthoud04}.
+\item Zahm again provides very detailed anatomical connection diagrams
+  and is a must read \citep{Zahm00}.
+\item The review by Abbas Khani and Gregor Rainer focusses on the
+  roles of the different nuclei, how they interact, how they implement
+  reinforcement guided decision making and which forms are out there
+  (reversal, go no go etc). A very balanced article which, for
+  example, not just cites the prediction error paradigm of DA but
+  reports also the other roles DA \citep{Khani2016}.
 \end{itemize}
 
+
+
+
+
+
+
+
+
+
+\section{Nucleus Accumbens (NAcc)}
+
+The Nacc is the ventral extension of the striatum, and therefore also called the ventral striatum.  The ventral striatum contains neurons known as medium spiny neurons (MSN's).
+
+The accumbens has two major subterritories: the shell and the core 
+\citep{heimer91} where the shell can be further subdivided \citep{Usuda1998} in lateral and medial parts and the core rather depending on its D1 or D2 receptors.
+
+\subsection{Behavioural experiments}
+
+The Nacc core and shell have distinct roles controlling reward based learning:
+
+In reversal learning \citep{Dalton2014} the shell seems to control switching contingencies (i.e. the reward is moved from one site to another) whereas the core controls the actual approach behaviour towards the rewarding site.
+
+Impulsivity is altered by 5HT antagonists which point towards an important role of 5HT in the retrieval of delayed rewards. 5-HT(2A) antagonists reduced decreased impulsive responding and the 5-HT(2C) antagonist increased impulsivity \citep{Robinson2008}.
+
+\subsection{Signals}
+
+By measuring the DA concentration in both the core and shell \citep{Saddoris2015} it turns out that Core DA follows the classical prediction error signals were it spikes most to the predicting cue whereas the shell responds to all reward related events during the experiment.
+
+\subsection{Plasticity}
+
+It's well known the bursts of dopamine cause LTP in conjunction with pre- and (possible) postsynpatic activity (so called 3 factor Hebbian rule) or heterosynaptic LTP. However \citep{Goto2005} showed that D1 receptors cause LTP on hippocampal fibres whereas D2 receptors control the cortical inputs in the opposite way.
+It appears to be that 5HT causes retrograde cannabinoid (CB) release which inhibits pre-synaptic GLU release \citep{Burattini2014}. However, also postsynaptic HFS causes CB1 mediated depression. \citep{Mathur2011} tested this more thoroughly in that they conclude that 5HT actually causes presynaptic inhibition via the 5HT1B receptor, with that LTD and that HFS can have a similar effect by releasing CB.
+
+
+
+
+\subsection{Nucleus Accumbens Core}
+
+\subsubsection{Afferents}
+
+The NAc core receives inputs from the dorsal-medial prefrontal cortex and the hippocampus \citep{brog93}.
+
+\subsubsection{Efferents}
+
+There are two distinct output pathways from the NAcc core which have its origins from the two sub-populations of neurons in the NAcc core. The one sub-population carries mainly D1 receptors and the other one carries mainly D2 receptors \citep{kelley04} \citep{Humphries2010}. 
+
+\paragraph{Direct pathway}
+The D1 receptor carrying neurons feed directly into the SNr and are able to inhibit tonically active SNr neurons, thus the NAcc core is able to disinhibit motor programs. 
+
+\paragraph{Indirect pathway}
+There is an indirect pathway via the VP to the SNr originating from the NAcc core. In contrast to the direct pathway these neurons in the indirect pathway carry mainly D2 receptors which are inhibitory in nature. D2 receptors are very sensitive to low DA concentrations and will react to the tonic DA concentrations. 
+
+
+
+
+\subsection{Nucleus Accumbens Shell}
+
+The shell can be further divided into the medial and lateral shell \citep{Ikemoto2007} \citep{Usuda1998} used in the model by \citep{Humphries2010}.
+
+\subsubsection{Medial Shell}
+
+The medial Shell projects to the medial Ventral Pallidum (VP) \citep{Ikemoto2007}.
+
+\subsubsection{Lateral Shell}
+
+The lateral shall projects to the ventrolateral Ventral Pallium (VP) \citep{Ikemoto2007}.
+
+
+\subsubsection{Behavioural experiments}
+
+The shell seems to be responsible for behavioural flexibility meaning that it controls the animal's ability to shift to another target when the reward is lost \citep{Aquili2014}
+
+\subsubsection{Function}
+
+Overall the Shell seems to learn the stimuli which are associated with a reward, and thus enhances the future salience of those stimuli \citep{Cassidy2017}.
+
+In this context it is also interesting that shell DA also tracks rather the inventive value than the reward prediction error \citep{Sackett2017} which probably means that the VTA has regions which work with the shell and that they are distinct from the core.
+
+
+
+
+
+
+
+
+
+\section{Orbitofrontal Cortex (OFC)}
+
+The OFC associates sensory stimuli with reward related information \citep{Schoenbaum.2009} or in other words it computes the (potential) reward value of a sensor cue \citep{Wikenheiser2016}, \citep{Bari2013}.
+
+\subsection{Afferents}
+
+The OFC receives inputs from a wide range of brain areas which allows it associate sensor cues (and also actions) to rewards. \citep{Wikenheiser2016} provides an overview of these inputs which are from the:
+
+\begin{itemize}
+\item hippocampus
+\item subiculum
+\item PFC
+\item perihirnal cortex, and
+\item nucleus reuniens
+\end{itemize}
+
+Serotonin seems to have a strong effect on the OFC which has been shown by \citep{Zhou2015}. Stimulation of the DRN results in both excitatory activity and inhibitory activity in the OFC. In addition the release of 5HT has a strong impact on plasticity: after pairing an odour stimulus with the release of 5HT the odour stimulus creates long lasting activity in the OFC which starts at the presentation of the stimulus and ends after reward delivery  \citep{Zhou2015}.
+
+\subsection{Efferents}
+
+Its major subcortical targets include the dorsal raphe nucleus \citep{Luo2015}, medial striatum, NAcc, lateral preoptic area, amygdala and the hypothalamus \citep{Vertes2012}.
+
+  * The l-OFC innervates the l-shell and amygdala and 
+  * the mOFC the m-shell, hippocampus and amygdala \citep{Brog1993} \citep{Noonan2012}
+
+\subsection{Neuronal activity}
+
+The paper by \citep{Tremblay1999} proposed that OFC neurons code the motivational value of rewards. The activity of OFC neurons increased in response to reward-predicting stimuli, during the expectation of rewards, and after the receipt of rewards. Also actions, associated with rewards, increase the firing rates of OFC neurons \citep{Wikenheiser2016}.
+
+\subsection{Behavioural experiments}
+
+The review by \citep{Wikenheiser2016} presents behavioural experiments involving the OFC which confirm that the OFC computes behavioural reward value computed from sensory cues, such as odour, and actions. They contrast this to the hippocampus which computes reward value in relation to place fields.
+
+Spatial reversal learning is improved by injecting the 5-HT(2C) receptor antagonist into the OFC \citep{Boulougouris2010}. 
+
+Reversal learning is impaired if 5HT processing is disrupted in the OFC \citep{Bari2013}.
+
+\subsubsection{Medial Prefrontal Cortex (mPFC)}
+
+The mPFC is considered by Homberg to be the most important location for top level cognitive
+functions. 
+
+The ventral portion of the mPFC is called Infralimbic cortex (IL) \citep{Tsutsui-Kimura2016}.
+
+\subsection{Efferents}
+
+A well known target of the mPFC is the Nacc core where the Nacc seems to be taking the role for response inhibition and waiting \citep{Neufang2016} \citep{Feja2014}.
+
+Projections from the mPFC to the DRN, allowing the mPFC to regulate 5HT firing and therefore control its own 5HT innervation  \citep{Homberg2012}\citep{Juckel1999}. This projection is inhibitory (see also the DRN page).
+
+\subsection{Neuromodulation}
+
+5HT plays a significant role in the mPFC which has been shown in great detail in \citep{Santana2017} and concluded that 5-HT1A, 5-HT2A, 5-HT2C, and 5-HT3, 
+dopamine D1 and D2 are widely expressed in the mPFC. The receptor 5-HT3 was only expressed on GABAergic interneurons while all the other ones were expressed on both pyramidal and interneurons.
+
+
+\subsection{Behaviour}
+Lesions to the IL causes more impulsive behaviour \citep{Tsutsui-Kimura2016} and reduction in 5HT is also associated with less impulse control \citep{Neufang2016}.
 
 
 
@@ -91,6 +276,135 @@ The basolateral Amygdala has abundant projections from somatosensory cortices
 \citep{Swanson1998}, limbic cortices \citep{Ottersen1982} and (ventral) hippocampus \citep{Pitkanen2000}.
 
 mPFC inputs are inhibitory in nature \citep{Rosenkranz2002} but this inhibition can be suppressed by DA release so that in the presence of DA the cortex can drive the BLA.
+
+
+
+
+
+
+\section{Entopeduncular Nucleus (EP)}
+
+The entopeduncular nucleus’, also called the GPi in primates, actions are
+strongly regulated by expected reward outcomes and it is an important output centre of the basal ganglia \citep{Rajakumar1993} 
+
+\subsection{Efferents}
+
+Different parts of the EP appear to perform different tasks. 
+
+  * The caudal part of the EP has efferents to the (vm-)thalamus and brainstem nuclei and therefore controls motor activity \citep{Rajakumar1993}  \citep{Wallace2017}.
+  * The rostral part of the EP has strong projections to the lateral subnuclei of the LHb (including the oval nucleus)LHb \citep{Rajakumar1993}\citep{Hong2008} which are glutamatergic and excitatory \citep{Shabel2012} \citep{Wallace2017}. The LHb then projects primarily to the rostral medial tegmental area (rMTg) which is a GABAergic nucleus that innervates the VTA.
+
+\subsection{Function}
+
+The reward prediction error is considered to be instigated from the LHb and Barrot et al, 2012 theorized that the EP could play a major role in this activity as it has such an important input to the LHb \citep{Barrot2012} and in turn to the VTA as menioned above. This relates to the rostral part of the EP.
+
+
+
+
+
+
+
+\section{Lateral Habenula}
+
+\subsection{Afferents}
+
+The 2 strongest forebrain afferents to the LHb are the EP and LH and other connections include the lateral preoptic area and the VP \citep{Parent1981}. 
+
+Araki, 1984, states that the connection from EP to LHb is GABAergic \citep{Araki1984} but Shabel 2012 qualifies it as excitatory and glutamergic \citep{Shabel2012}.
+
+Mok proposed that the actual connection was mainly excitatory \citep{Mok1974}. A view supported by Poller who found a strong glutamergic projection that targeted VTA and RMTg projecting neurons \citep{Poller2013}.
+
+The LHb also receives DA input from the midbrain VTA and SNc \citep{Kowski2009} and reciprocally its main, inhibitory projections are to the VTA, SNc and the DRN \citep{Ji2007}\citep{Christoph1986}\citep{Rajakumar1993}.
+
+\subsection{Efferents}
+
+The main targets of the LHb are the VTA, Midbrain reticular nucleus (MRN), periaqueductal gray (PAG) and the superior central nucleus raphe (CS) \citep{Quina2015}.
+
+Slightly puzzling is that the effect on the VTA by the LHb is known to be inhibitory. Hong et al’s 2011 theorize that as LHb neurons are largely glutamergic their inhibitory function must be through an intermediary, the RMTg \citep{Hong2011}.
+
+\subsection{Function}
+
+Bromberg-Martin et al’s 2010 research viewed LHb as the most important source of reward memory in DA neurons. They cited 3 potential pathways for transmission; 1) prefrontal cortex to the striatum to the global pallidus to LHb 2) For rats, the mPFC to LHb 3) common sources project reward memory signals to LHb and DA neurons. They found that many LHb and DA neurons signalled past reward results in their tonic activity, this was surprising as previous studies had reported this was purely the case for phasic activity \citep{Bromberg-Martin2010}.
+
+It is considered to be the main source of the negative reward signal that facilitates the DA reward prediction error as LHb innervation inhibits midbrain DA.\citep{Shen2012}\citep{Shabel2012}\citep{Matsumoto2007}\citep{Barrot2012} 
+
+
+
+
+
+\section{Lateral hypothalamus (LH)}
+
+The lateral hypothalamus has both Glutamatergic and GABAerfic neurons \citep{Stanley2011}.
+
+\subsection{Efferents}
+
+The strongest outputs from the LH are to the VTA and the lateral habenula (LHb) \citep{Stuber2016}. 
+The projection from the LH to the Habenula is excitatory \citep{Poller2013} which in turn then projects to the RMTg which has GABA-ergic neurons.
+
+The LH contains both Glu and GABA neurons where the GLU neurons project to the DA neurons in the VTA whereas the GABA neurons in the LH project to the GABA neurons in the VTA which in turn then disinhibit DA neurons in the VTA. 
+
+
+\subsection{Afferents}
+
+The LH receives many different inputs from different cortical and subcorical areas which are both excitatory and inhibitory. The PFC seems to be an import source of excitatory information, in particular the mPFC. It also receives inputs from the extended Amygdala and the hippocampus \citep{Stuber2016}.
+
+\subsection{Behavioural experiments}
+
+Feeding is stimulated when LH cells are activated by glutamate
+agonists \citep{stanley93} and that stimulation of GABAergic cells in the LH inhibits feeding \citep{Stanley2011}.
+
+
+
+
+
+
+\section{Rostral Medial Tegmental Nucleus (RMTg) }
+
+The newly discovered rostral medial tegmental nucleus, also called the tail of
+the VTA, is partially embedded in the VTA \citep{Bourdy2012}. It has been suggested that it has
+an ideal location to function as a switch between opposing aversion and reward
+responding areas and to direct information to DA neurons \citep{Barrot2012}.
+
+\subsection{Afferents}
+
+The main afferent to the RMTg is the glutamergic connection from the LHb, which is 7 times
+stronger than the LHb projection to the VTA \citep{Barrot2012} and other afferents include
+the VTA and SNc \citep{Lavezzi2011}.
+
+RMTg GABA neurons differ in their targets to the VTA GABA neurons which, for example, target the forebrain in large numbers \citep{Barrot2012}. 
+
+\subsection{Efferents}
+
+The RMTg’s GABA efferents are the principal inhibitory connection to the VTA and SNc and play a critical role in RPE and aversive signalling \citep{Bourdy2012}. The RMTg also sends projections to other neuromodulatory systems including the raphe nucleus and the locus ceruleus \citep{Barrot2012} \citep{Hong2011}.
+
+
+
+\section{Ventral Pallidum (VP)}
+
+The ventral pallidum is described as the limbic area of the pallidal complex as
+many reward circuits converge on this region. It encodes reward and motivation
+information engendered by rewarding stimuli \citep{Smith2009}. The VP is divided into medial
+and lateral sections \citep{Sesack2010}.
+
+\subsection{Afferents}
+
+The VP is innervated by inhibitory GABA connections from the
+NAcc \citep{Basar2010}. 
+
+See Nacc core/shell for the exact projections.
+
+\subsection{Efferents}
+
+VP efferents project to the SNr, EP, prefrontal cortex, thalamus, LHb and the VTA \citep{Groenewegen1993} \citep{Ikemoto2007}.
+
+The ventral pallidum projects to the mediodorsal thalamic nucleus which in turn then 
+projects to the infralimbic, prelimbic, agranular insular and cingulate cortex \citep{Ikemoto2007}.
+
+The m-VP is the main source of GABAergic innervation to the VTA \citep{Sesack2010}.
+
+
+
+
 
 
 
@@ -233,264 +547,6 @@ Premature responding is increased after \citep{Fletcher2007} application of a 5H
 
 
 
-
-
-\section{Entopeduncular Nucleus (EP)}
-
-The entopeduncular nucleus’, also called the GPi in primates, actions are
-strongly regulated by expected reward outcomes and it is an important output centre of the basal ganglia \citep{Rajakumar1993} 
-
-\subsection{Efferents}
-
-Different parts of the EP appear to perform different tasks. 
-
-  * The caudal part of the EP has efferents to the (vm-)thalamus and brainstem nuclei and therefore controls motor activity \citep{Rajakumar1993}  \citep{Wallace2017}.
-  * The rostral part of the EP has strong projections to the lateral subnuclei of the LHb (including the oval nucleus)LHb \citep{Rajakumar1993}\citep{Hong2008} which are glutamatergic and excitatory \citep{Shabel2012} \citep{Wallace2017}. The LHb then projects primarily to the rostral medial tegmental area (rMTg) which is a GABAergic nucleus that innervates the VTA.
-
-\subsection{Function}
-
-The reward prediction error is considered to be instigated from the LHb and Barrot et al, 2012 theorized that the EP could play a major role in this activity as it has such an important input to the LHb \citep{Barrot2012} and in turn to the VTA as menioned above. This relates to the rostral part of the EP.
-
-
-
-
-
-
-
-\section{Lateral Habenula}
-
-\subsection{Afferents}
-
-The 2 strongest forebrain afferents to the LHb are the EP and LH and other connections include the lateral preoptic area and the VP \citep{Parent1981}. 
-
-Araki, 1984, states that the connection from EP to LHb is GABAergic \citep{Araki1984} but Shabel 2012 qualifies it as excitatory and glutamergic \citep{Shabel2012}.
-
-Mok proposed that the actual connection was mainly excitatory \citep{Mok1974}. A view supported by Poller who found a strong glutamergic projection that targeted VTA and RMTg projecting neurons \citep{Poller2013}.
-
-The LHb also receives DA input from the midbrain VTA and SNc \citep{Kowski2009} and reciprocally its main, inhibitory projections are to the VTA, SNc and the DRN \citep{Ji2007}\citep{Christoph1986}\citep{Rajakumar1993}.
-
-\subsection{Efferents}
-
-The main targets of the LHb are the VTA, Midbrain reticular nucleus (MRN), periaqueductal gray (PAG) and the superior central nucleus raphe (CS) \citep{Quina2015}.
-
-Slightly puzzling is that the effect on the VTA by the LHb is known to be inhibitory. Hong et al’s 2011 theorize that as LHb neurons are largely glutamergic their inhibitory function must be through an intermediary, the RMTg \citep{Hong2011}.
-
-\subsection{Function}
-
-Bromberg-Martin et al’s 2010 research viewed LHb as the most important source of reward memory in DA neurons. They cited 3 potential pathways for transmission; 1) prefrontal cortex to the striatum to the global pallidus to LHb 2) For rats, the mPFC to LHb 3) common sources project reward memory signals to LHb and DA neurons. They found that many LHb and DA neurons signalled past reward results in their tonic activity, this was surprising as previous studies had reported this was purely the case for phasic activity \citep{Bromberg-Martin2010}.
-
-It is considered to be the main source of the negative reward signal that facilitates the DA reward prediction error as LHb innervation inhibits midbrain DA.\citep{Shen2012}\citep{Shabel2012}\citep{Matsumoto2007}\citep{Barrot2012} 
-
-
-
-
-
-\section{Lateral hypothalamus (LH)}
-
-The lateral hypothalamus has both Glutamatergic and GABAerfic neurons \citep{Stanley2011}.
-
-\subsection{Efferents}
-
-The strongest outputs from the LH are to the VTA and the lateral habenula (LHb) \citep{Stuber2016}. 
-The projection from the LH to the Habenula is excitatory \citep{Poller2013} which in turn then projects to the RMTg which has GABA-ergic neurons.
-
-The LH contains both Glu and GABA neurons where the GLU neurons project to the DA neurons in the VTA whereas the GABA neurons in the LH project to the GABA neurons in the VTA which in turn then disinhibit DA neurons in the VTA. 
-
-
-\subsection{Afferents}
-
-The LH receives many different inputs from different cortical and subcorical areas which are both excitatory and inhibitory. The PFC seems to be an import source of excitatory information, in particular the mPFC. It also receives inputs from the extended Amygdala and the hippocampus \citep{Stuber2016}.
-
-\subsection{Behavioural experiments}
-
-Feeding is stimulated when LH cells are activated by glutamate
-agonists \citep{stanley93} and that stimulation of GABAergic cells in the LH inhibits feeding \citep{Stanley2011}.
-
-
-
-
-
-
-\section{Nucleus Accumbens (NAcc)}
-
-The Nacc is the ventral extension of the striatum, and therefore also called the ventral striatum.  The ventral striatum contains neurons known as medium spiny neurons (MSN's).
-
-The accumbens has two major subterritories: the shell and the core 
-\citep{heimer91} where the shell can be further subdivided \citep{Usuda1998} in lateral and medial parts and the core rather depending on its D1 or D2 receptors.
-
-\subsection{Behavioural experiments}
-
-The Nacc core and shell have distinct roles controlling reward based learning:
-
-In reversal learning \citep{Dalton2014} the shell seems to control switching contingencies (i.e. the reward is moved from one site to another) whereas the core controls the actual approach behaviour towards the rewarding site.
-
-Impulsivity is altered by 5HT antagonists which point towards an important role of 5HT in the retrieval of delayed rewards. 5-HT(2A) antagonists reduced decreased impulsive responding and the 5-HT(2C) antagonist increased impulsivity \citep{Robinson2008}.
-
-\subsection{Signals}
-
-By measuring the DA concentration in both the core and shell \citep{Saddoris2015} it turns out that Core DA follows the classical prediction error signals were it spikes most to the predicting cue whereas the shell responds to all reward related events during the experiment.
-
-\subsection{Plasticity}
-
-It's well known the bursts of dopamine cause LTP in conjunction with pre- and (possible) postsynpatic activity (so called 3 factor Hebbian rule) or heterosynaptic LTP. However \citep{Goto2005} showed that D1 receptors cause LTP on hippocampal fibres whereas D2 receptors control the cortical inputs in the opposite way.
-It appears to be that 5HT causes retrograde cannabinoid (CB) release which inhibits pre-synaptic GLU release \citep{Burattini2014}. However, also postsynaptic HFS causes CB1 mediated depression. \citep{Mathur2011} tested this more thoroughly in that they conclude that 5HT actually causes presynaptic inhibition via the 5HT1B receptor, with that LTD and that HFS can have a similar effect by releasing CB.
-
-
-
-
-
-
-
-
-\subsection{Nucleus Accumbens Core}
-
-\subsubsection{Afferents}
-
-The NAc core receives inputs from the dorsal-medial prefrontal cortex and the hippocampus \citep{brog93}.
-
-\subsubsection{Efferents}
-
-There are two distinct output pathways from the NAcc core which have its origins from the two sub-populations of neurons in the NAcc core. The one sub-population carries mainly D1 receptors and the other one carries mainly D2 receptors \citep{kelley04} \citep{Humphries2010}. 
-
-\paragraph{Direct pathway}
-The D1 receptor carrying neurons feed directly into the SNr and are able to inhibit tonically active SNr neurons, thus the NAcc core is able to disinhibit motor programs. 
-
-\paragraph{Indirect pathway}
-There is an indirect pathway via the VP to the SNr originating from the NAcc core. In contrast to the direct pathway these neurons in the indirect pathway carry mainly D2 receptors which are inhibitory in nature. D2 receptors are very sensitive to low DA concentrations and will react to the tonic DA concentrations. 
-
-
-
-
-\subsection{Nucleus Accumbens Shell}
-
-The shell can be further divided into the medial and lateral shell \citep{Ikemoto2007} \citep{Usuda1998} used in the model by \citep{Humphries2010}.
-
-\subsubsection{Medial Shell}
-
-The medial Shell projects to the medial Ventral Pallidum (VP) \citep{Ikemoto2007}.
-
-\subsubsection{Lateral Shell}
-
-The lateral shall projects to the ventrolateral Ventral Pallium (VP) \citep{Ikemoto2007}.
-
-
-\subsubsection{Behavioural experiments}
-
-The shell seems to be responsible for behavioural flexibility meaning that it controls the animal's ability to shift to another target when the reward is lost \citep{Aquili2014}
-
-\subsubsection{Function}
-
-Overall the Shell seems to learn the stimuli which are associated with a reward, and thus enhances the future salience of those stimuli \citep{Cassidy2017}.
-
-In this context it is also interesting that shell DA also tracks rather the inventive value than the reward prediction error \citep{Sackett2017} which probably means that the VTA has regions which work with the shell and that they are distinct from the core.
-
-
-
-
-\section{Orbitofrontal Cortex (OFC)}
-
-The OFC associates sensory stimuli with reward related information \citep{Schoenbaum.2009} or in other words it computes the (potential) reward value of a sensor cue \citep{Wikenheiser2016}, \citep{Bari2013}.
-
-\subsection{Afferents}
-
-The OFC receives inputs from a wide range of brain areas which allows it associate sensor cues (and also actions) to rewards. \citep{Wikenheiser2016} provides an overview of these inputs which are from the:
-
-\begin{itemize}
-\item hippocampus
-\item subiculum
-\item PFC
-\item perihirnal cortex, and
-\item nucleus reuniens
-\end{itemize}
-
-Serotonin seems to have a strong effect on the OFC which has been shown by \citep{Zhou2015}. Stimulation of the DRN results in both excitatory activity and inhibitory activity in the OFC. In addition the release of 5HT has a strong impact on plasticity: after pairing an odour stimulus with the release of 5HT the odour stimulus creates long lasting activity in the OFC which starts at the presentation of the stimulus and ends after reward delivery  \citep{Zhou2015}.
-
-\subsection{Efferents}
-
-Its major subcortical targets include the dorsal raphe nucleus \citep{Luo2015}, medial striatum, NAcc, lateral preoptic area, amygdala and the hypothalamus \citep{Vertes2012}.
-
-  * The l-OFC innervates the l-shell and amygdala and 
-  * the mOFC the m-shell, hippocampus and amygdala \citep{Brog1993} \citep{Noonan2012}
-
-\subsection{Neuronal activity}
-
-The paper by \citep{Tremblay1999} proposed that OFC neurons code the motivational value of rewards. The activity of OFC neurons increased in response to reward-predicting stimuli, during the expectation of rewards, and after the receipt of rewards. Also actions, associated with rewards, increase the firing rates of OFC neurons \citep{Wikenheiser2016}.
-
-\subsection{Behavioural experiments}
-
-The review by \citep{Wikenheiser2016} presents behavioural experiments involving the OFC which confirm that the OFC computes behavioural reward value computed from sensory cues, such as odour, and actions. They contrast this to the hippocampus which computes reward value in relation to place fields.
-
-Spatial reversal learning is improved by injecting the 5-HT(2C) receptor antagonist into the OFC \citep{Boulougouris2010}. 
-
-Reversal learning is impaired if 5HT processing is disrupted in the OFC \citep{Bari2013}.
-
-\subsubsection{Medial Prefrontal Cortex (mPFC)}
-
-The mPFC is considered by Homberg to be the most important location for top level cognitive
-functions. 
-
-The ventral portion of the mPFC is called Infralimbic cortex (IL) \citep{Tsutsui-Kimura2016}.
-
-\subsection{Efferents}
-
-A well known target of the mPFC is the Nacc core where the Nacc seems to be taking the role for response inhibition and waiting \citep{Neufang2016} \citep{Feja2014}.
-
-Projections from the mPFC to the DRN, allowing the mPFC to regulate 5HT firing and therefore control its own 5HT innervation  \citep{Homberg2012}\citep{Juckel1999}. This projection is inhibitory (see also the DRN page).
-
-\subsection{Neuromodulation}
-
-5HT plays a significant role in the mPFC which has been shown in great detail in \citep{Santana2017} and concluded that 5-HT1A, 5-HT2A, 5-HT2C, and 5-HT3, 
-dopamine D1 and D2 are widely expressed in the mPFC. The receptor 5-HT3 was only expressed on GABAergic interneurons while all the other ones were expressed on both pyramidal and interneurons.
-
-
-\subsection{Behaviour}
-Lesions to the IL causes more impulsive behaviour \citep{Tsutsui-Kimura2016} and reduction in 5HT is also associated with less impulse control \citep{Neufang2016}.
-
-
-
-\section{Rostral Medial Tegmental Nucleus (RMTg) }
-
-The newly discovered rostral medial tegmental nucleus, also called the tail of
-the VTA, is partially embedded in the VTA \citep{Bourdy2012}. It has been suggested that it has
-an ideal location to function as a switch between opposing aversion and reward
-responding areas and to direct information to DA neurons \citep{Barrot2012}.
-
-\subsection{Afferents}
-
-The main afferent to the RMTg is the glutamergic connection from the LHb, which is 7 times
-stronger than the LHb projection to the VTA \citep{Barrot2012} and other afferents include
-the VTA and SNc \citep{Lavezzi2011}.
-
-RMTg GABA neurons differ in their targets to the VTA GABA neurons which, for example, target the forebrain in large numbers \citep{Barrot2012}. 
-
-\subsection{Efferents}
-
-The RMTg’s GABA efferents are the principal inhibitory connection to the VTA and SNc and play a critical role in RPE and aversive signalling \citep{Bourdy2012}. The RMTg also sends projections to other neuromodulatory systems including the raphe nucleus and the locus ceruleus \citep{Barrot2012} \citep{Hong2011}.
-
-
-
-\section{Ventral Pallidum (VP)}
-
-The ventral pallidum is described as the limbic area of the pallidal complex as
-many reward circuits converge on this region. It encodes reward and motivation
-information engendered by rewarding stimuli \citep{Smith2009}. The VP is divided into medial
-and lateral sections \citep{Sesack2010}.
-
-\subsection{Afferents}
-
-The VP is innervated by inhibitory GABA connections from the
-NAcc \citep{Basar2010}. 
-
-See Nacc core/shell for the exact projections.
-
-\subsection{Efferents}
-
-VP efferents project to the SNr, EP, prefrontal cortex, thalamus, LHb and the VTA \citep{Groenewegen1993} \citep{Ikemoto2007}.
-
-The ventral pallidum projects to the mediodorsal thalamic nucleus which in turn then 
-projects to the infralimbic, prelimbic, agranular insular and cingulate cortex \citep{Ikemoto2007}.
-
-The m-VP is the main source of GABAergic innervation to the VTA \citep{Sesack2010}.
 
 
 \section{Ventral Tegmental Area (VTA)}
