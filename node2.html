@@ -73,43 +73,61 @@
 <H1><A NAME="SECTION00020000000000000000">
 <SPAN CLASS="arabic">1</SPAN> Introduction</A>
 </H1>
-This document is a hybrid of a map and text
+This document is a hybrid of a map and commenting text
 underneath which in turn points to references which back up the
 connections.
 
 <P>
 In contrast to &ldquo;self-organised&rdquo; models which assume that data
-organises itself to a brain structure which then acts in its
-environment, this project here starts from <SPAN  CLASS="textsl">curation</SPAN> where
-every reference needs to be checked manually and then worked into this
-map. There are a number of reasons why curation is central:
+organises itself to a brain map, this project strongly believes
+that <SPAN  CLASS="textsl">curation</SPAN> is essential. There are a number of reasons:
 
 <UL>
-<LI>Uncertainty of the data: neurophysiological data never
-  provides 100% certainty. Data is noisy and there will be
-  almost every time a study which contradicts the findings. However,
-  through experience one learns to distinguish between spurious
-  results and those which will consolidate. This is not a simple
-  process eliminating outliers but to look at the studies from
-  the curator's experience which are most likely important
-  and which will be superseded.
+<LI><SPAN  CLASS="textbf">Bias</SPAN>: We assume <SPAN  CLASS="textsl">every paper</SPAN> and <SPAN  CLASS="textsl">every
+  dataset</SPAN> is to a certain degree biased - be it subconscious,
+  conscious or deliberate. It should be a no-brainer. It is thus
+  important to compare different views and then draw conclusions which
+  most likely reflect what is really happening in the rat brain.
+  The advantage as a computational neuroscientist (who has also
+  extensive experience in wet-neuroscience) is that I can step
+  back and can talk to different camps to find out different
+  intentions and slants. On the other hand as a
+  computational neuroscientist of course the danger is that I
+  force popular machine learning models on neuroscience. For
+  that reason this map here makes no attempt to be mathematically
+  pure. For example there is no attempt to force TD learning
+  onto this map.
 </LI>
-<LI>The human factor: data is never presented in an objective
-  vacuum. We assume every paper is to a certain degree biased
-  fitting the author's system view of the limbic system. It is
-  thus important to compare different views and then draw
-  conclusions which are most likely and make sense in terms
-  of behaviour and signal flow.
+<LI><SPAN  CLASS="textbf">Uncertainty of the data</SPAN>: neurophysiological data never
+  provides 100% certainty. Data is noisy and there will be almost
+  every time a study which contradicts the current state of the
+  art. However, through experience one learns to distinguish between
+  spurious results and those which will consolidate. This is not a
+  simple process eliminating outliers but to look at the studies from
+  the curator's experience because a hype or fashion can generate
+  a large amount of publications and again requires stepping back
+  and evaluating publications with possibly at a 10year timeframe to
+  check which of these findings have been reproduced from different
+  sources and over years.
 </LI>
-<LI>Closed loop: at the end an animal needs to act according to
-  sensory stimuli. This dictates a certain direction of information
-  flow from sensor to motor and then back to the sensor via the
-  environment. The model here needs to work in a closed loop
-  scenario because the agent acts to obtain rewards. This is
-  only possible by taking into account closed loop and using this
-  as a constraint.
+<LI><SPAN  CLASS="textbf">Closed loop / Embodied</SPAN>: At the end an animal needs to
+  act in its environment as the limbic system make an animal finding
+  rewards (and punishments). This dictates a certain direction of
+  information flow from sensor to motor and then <SPAN  CLASS="textsl">back</SPAN> to the
+  sensor via the environment. This is only possible by taking into
+  account closed loop and using this as a constraint. The whole map
+  needs to be able to establish a (real or simulated) rat performing
+  reward related behavioural experiments, for example reversal
+  learning. This constraint demands that the map needs to be seen
+  always as a whole and being embedded in an environment.
 </LI>
 </UL>
+
+<P>
+In summary: human curation of data here is as important as humans
+generating both data and publications. So far no algorithm can
+fix this. A brain searching for rewards cannot do this while swimming
+in a vat and thus requires to be embodied.
 
 <P>
 
