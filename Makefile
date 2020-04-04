@@ -1,6 +1,4 @@
 all:
-	git tag | tail -1 > tag.txt
-	cat tag.txt
 	pdflatex limbic-doc
 	bibtex limbic-doc
 	pdflatex limbic-doc
