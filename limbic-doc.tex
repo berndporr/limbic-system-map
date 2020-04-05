@@ -4,6 +4,7 @@
 \usepackage{natbib}
 \usepackage{hyperref}
 \usepackage{html}
+\usepackage{acronym}
 \hypersetup{
   colorlinks=true,
   linkcolor=blue,
@@ -14,10 +15,9 @@
   bookmarks=true
 }
 
-
 \title{Limbic system map}
 \author{Bernd Porr\footnote{BerndPorr@glasgow.ac.uk}, Maria Thomson and Ailsa Millen}
-\date{Revision 0.8}
+\date{Revision 0.9}
 
 \begin{document}
 
@@ -30,16 +30,9 @@
 
 \begin{latexonly}
   \begin{center}
-    \includegraphics[width=\textwidth]{limbic-map}
+    \includegraphics[width=0.8\textwidth]{limbic-map}
   \end{center}
-      {\footnotesize
-        HC: Hippocampus, mPFC: medial prefrontal
-        cortex, OFC: orbitofrontal cortex, DRN: dorsal Raphe nucleus, m-shell: medial shell,
-        l-shell: lateral shell, core: nucleus accumbens core, VTA: ventral tegmental
-        area, m-VP: medial ventral pallidum, vl-VP: ventrolateral ventral pallidum,
-        EP: Entopeduncular Nucleus, RMTg: Rostral Medial Tegmental Nucleus,
-        LH: lateral hypothalamus. \href{https://github.com/berndporr/limbic-system/blob/master/limbic-map.pdf}{Link to the full resolution PDF.}
-      }
+  {\footnotesize Online and as PDF: \url{https://berndporr.github.io/limbic-system-map/}}
 \end{latexonly}
 
 
@@ -624,6 +617,10 @@ Cohen et al’s 2012 research found that VTA GABA neurons signalled expected rew
 
 
 \appendix
+
+\section*{Nuclei}
+\include{acronyms}
+
 
 \section*{License}
 
