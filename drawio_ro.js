@@ -1,4 +1,4 @@
-var url = 'https://www.draw.io/?embed=1&spin=1&modified=unsavedChanges&proto=json&chrome=0';
+var url = 'https://berndporr.github.io/limbic-system-map/src/main/webapp/index.html?embed=1&spin=1&modified=unsavedChanges&proto=json&chrome=0';
 
 var iframe = document.getElementById('drawioiframe');
 iframe.src = url;
