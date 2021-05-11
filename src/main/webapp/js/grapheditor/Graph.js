@@ -209,6 +209,7 @@ mxGraphView.prototype.minGridSize = 4;
 
 // UrlParams is null in embed mode
 mxGraphView.prototype.defaultGridColor = '#d0d0d0';
+mxGraphView.prototype.defaultDarkGridColor = '#6e6e6e';
 mxGraphView.prototype.gridColor = mxGraphView.prototype.defaultGridColor;
 
 //Units
@@ -1747,6 +1748,11 @@ Graph.prototype.defaultScrollbars = !mxClient.IS_IOS;
 Graph.prototype.defaultPageVisible = true;
 
 /**
+ * Specifies if the page should be visible for new files. Default is true.
+ */
+Graph.prototype.defaultGridEnabled = true;
+
+/**
  * Specifies if the app should run in chromeless mode. Default is false.
  * This default is only used if the contructor argument is null.
  */
@@ -1902,6 +1908,38 @@ Graph.prototype.init = function(container)
 		});
 	};
 	
+	// Handles custom links in tooltips
+	if (this.tooltipHandler != null)
+	{
+		var tooltipHandlerInit = this.tooltipHandler.init;
+		
+		this.tooltipHandler.init = function()
+		{
+			tooltipHandlerInit.apply(this, arguments);
+			
+			if (this.div != null)
+			{
+				mxEvent.addListener(this.div, 'click', mxUtils.bind(this, function(evt)
+				{
+					var source = mxEvent.getSource(evt);
+					
+					if (source.nodeName == 'A')
+					{
+						var href = source.getAttribute('href');
+						
+						if (href != null && this.graph.isCustomLink(href) &&
+							(mxEvent.isTouchEvent(evt) || !mxEvent.isPopupTrigger(evt)) &&
+							this.graph.customLinkClicked(href))
+						{
+							mxEvent.consume(evt);
+						}
+					}
+				}));
+			}
+		};
+	}
+
+
 	// Adds or updates CSS for flowAnimation style
 	this.addListener(mxEvent.SIZE, mxUtils.bind(this, function(sender, evt)
 	{
@@ -1953,6 +1991,60 @@ Graph.prototype.init = function(container)
 		{
 			return (vertices && model.isVertex(cell)) || (edges && model.isEdge(cell));
 		}, model.getRoot());
+	};
+	
+	/**
+	 * Returns information about the current selection.
+	 */
+	Graph.prototype.getCommonStyle = function(cells)
+	{
+		var style = {};
+		
+		for (var i = 0; i < cells.length; i++)
+		{
+			var state = this.view.getState(cells[i]);
+			this.mergeStyle(state.style, style, i == 0);
+		}
+		
+		return style;
+	};
+	
+	/**
+	 * Returns information about the current selection.
+	 */
+	Graph.prototype.mergeStyle = function(style, into, initial)
+	{
+		if (style != null)
+		{
+			var keys = {};
+			
+			for (var key in style)
+			{
+				var value = style[key];
+				
+				if (value != null)
+				{
+					keys[key] = true;
+					
+					if (into[key] == null && initial)
+					{
+						into[key] = value;
+					}
+					else if (into[key] != value)
+					{
+						delete into[key];
+					}
+				}
+			}
+			
+			for (var key in into)
+			{
+				if (!keys[key])
+				{
+					delete into[key];
+				}
+			}
+		}
 	};
 
 	/**
@@ -2839,7 +2931,25 @@ Graph.prototype.isTransparentClickEvent = function(evt)
  */
 Graph.prototype.isIgnoreTerminalEvent = function(evt)
 {
-	return mxEvent.isShiftDown(evt) && mxEvent.isControlDown(evt);
+	return mxEvent.isShiftDown(evt) && (mxEvent.isControlDown(evt) ||
+		(mxClient.IS_MAC && mxEvent.isMetaDown(evt)));
+};
+
+/**
+ * Returns true if the given edge should be ignored.
+ */
+Graph.prototype.isEdgeIgnored = function(cell)
+{
+	var result = false;
+	
+	if (cell != null)
+	{
+		var style = this.getCurrentCellStyle(cell);
+
+		result = mxUtils.getValue(style, 'ignoreEdge', '0') == '1';
+	}
+	
+	return result;
 };
 
 /**
@@ -3397,7 +3507,7 @@ Graph.prototype.connectVertex = function(source, direction, length, evt, forceCl
 	
 	var duplicate = (!mxEvent.isShiftDown(evt) || mxEvent.isControlDown(evt)) || forceClone;
 	
-	if (duplicate)
+	if (duplicate && (urlParams['sketch'] != '1' || forceClone))
 	{
 		if (direction == mxConstants.DIRECTION_NORTH)
 		{
@@ -3472,6 +3582,26 @@ Graph.prototype.connectVertex = function(source, direction, length, evt, forceCl
 	
 					if (geo != null)
 					{
+						if (targetCell != null && urlParams['sketch'] == '1')
+						{
+							if (direction == mxConstants.DIRECTION_NORTH)
+							{
+								pt.y -= geo.height / 2;
+							}
+							else if (direction == mxConstants.DIRECTION_SOUTH)
+							{
+								pt.y += geo.height / 2;
+							}
+							else if (direction == mxConstants.DIRECTION_WEST)
+							{
+								pt.x -= geo.width / 2;
+							}
+							else
+							{
+								pt.x += geo.width / 2;
+							}
+						}
+		
 						geo.x = pt.x - geo.width / 2;
 						geo.y = pt.y - geo.height / 2;
 					}
@@ -6092,6 +6222,23 @@ TableLayout.prototype.execute = function(parent)
 	};
 	
 	/**
+	 * Adds support for centerPerimeter which is a special case of a fixed point perimeter.
+	 */
+	var mxGraphViewGetFixedTerminalPoint = mxGraphView.prototype.getFixedTerminalPoint;
+	
+	mxGraphView.prototype.getFixedTerminalPoint = function(edge, terminal, source, constraint)
+	{
+		if (terminal != null && terminal.style[mxConstants.STYLE_PERIMETER] == 'centerPerimeter')
+		{
+			return new mxPoint(terminal.getCenterX(), terminal.getCenterY());
+		}
+		else
+		{
+			return mxGraphViewGetFixedTerminalPoint.apply(this, arguments);
+		}
+	};
+
+	/**
 	 * Adds support for snapToPoint style.
 	 */
 	var mxGraphViewUpdateFloatingTerminalPoint = mxGraphView.prototype.updateFloatingTerminalPoint;
@@ -6257,6 +6404,12 @@ mxStencilRegistry.allowEval = true;
  */
 mxStencilRegistry.packages = [];
 
+/**
+ * Stores all package names that have been dynamically loaded.
+ * Each package is only loaded once.
+ */
+mxStencilRegistry.filesLoaded = {};
+
 // Extends the default stencil registry to add dynamic loading
 mxStencilRegistry.getStencil = function(name)
 {
@@ -6279,38 +6432,43 @@ mxStencilRegistry.getStencil = function(name)
 					{
 						var fname = libs[i];
 						
-						if (fname.toLowerCase().substring(fname.length - 4, fname.length) == '.xml')
+						if (!mxStencilRegistry.filesLoaded[fname])
 						{
-							mxStencilRegistry.loadStencilSet(fname, null);
-						}
-						else if (fname.toLowerCase().substring(fname.length - 3, fname.length) == '.js')
-						{
-							try
+							mxStencilRegistry.filesLoaded[fname] = true;
+							
+							if (fname.toLowerCase().substring(fname.length - 4, fname.length) == '.xml')
 							{
-								if (mxStencilRegistry.allowEval)
+								mxStencilRegistry.loadStencilSet(fname, null);
+							}
+							else if (fname.toLowerCase().substring(fname.length - 3, fname.length) == '.js')
+							{
+								try
 								{
-									var req = mxUtils.load(fname);
-									
-									if (req != null && req.getStatus() >= 200 && req.getStatus() <= 299)
+									if (mxStencilRegistry.allowEval)
 									{
-										eval.call(window, req.getText());
+										var req = mxUtils.load(fname);
+										
+										if (req != null && req.getStatus() >= 200 && req.getStatus() <= 299)
+										{
+											eval.call(window, req.getText());
+										}
+									}
+								}
+								catch (e)
+								{
+									if (window.console != null)
+									{
+										console.log('error in getStencil:', name, basename, libs, fname, e);
 									}
 								}
 							}
-							catch (e)
+							else
 							{
-								if (window.console != null)
-								{
-									console.log('error in getStencil:', fname, e);
-								}
+								// FIXME: This does not yet work as the loading is triggered after
+								// the shape was used in the graph, at which point the keys have
+								// typically been translated in the calling method.
+								//mxResources.add(fname);
 							}
-						}
-						else
-						{
-							// FIXME: This does not yet work as the loading is triggered after
-							// the shape was used in the graph, at which point the keys have
-							// typically been translated in the calling method.
-							//mxResources.add(fname);
 						}
 					}
 
@@ -6543,7 +6701,15 @@ if (typeof mxVertexHandler != 'undefined')
 			return graphLayoutIsVertexIgnored.apply(this, arguments) ||
 				this.graph.isTableRow(vertex) || this.graph.isTableCell(vertex);
 		};
-		
+			
+		// Adds support for ignoreEdge style
+		var graphLayoutIsEdgeIgnored = mxGraphLayout.prototype.isEdgeIgnored; 
+		mxGraphLayout.prototype.isEdgeIgnored = function(edge)
+		{
+			return graphLayoutIsEdgeIgnored.apply(this, arguments) ||
+				this.graph.isEdgeIgnored(edge);
+		};
+
 		// Extends connection handler to enable ctrl+drag for cloning source cell
 		// since copyOnConnect is now disabled by default
 		var mxConnectionHandlerCreateTarget = mxConnectionHandler.prototype.isCreateTarget;
@@ -6978,9 +7144,75 @@ if (typeof mxVertexHandler != 'undefined')
 				{
 					parent = this.getCellAt(x, y, null, true, false);
 				}
-			}			
+			}
 			
-			graphSplitEdge.apply(this, [edge, cells, newEdge, dx, dy, x, y, parent]);
+			var newEdge = null;
+				
+			this.model.beginUpdate();
+			try
+			{
+				var newEdge = graphSplitEdge.apply(this, [edge, cells, newEdge, dx, dy, x, y, parent]);
+				
+				// Removes cloned value on first segment
+				this.model.setValue(newEdge, '');
+				
+				// Removes child labels on first or second segment depending on coordinate
+				// LATER: Split and reposition labels based on x and y
+				var sourceLabels = this.getChildCells(newEdge, true);
+				
+				for (var i = 0; i < sourceLabels.length; i++)
+				{
+					var geo = this.getCellGeometry(sourceLabels[i]);
+					
+					if (geo != null && geo.relative && geo.x > 0)
+					{
+						this.model.remove(sourceLabels[i]);
+					}
+				}
+				
+				var targetLabels = this.getChildCells(edge, true);
+				
+				for (var i = 0; i < targetLabels.length; i++)
+				{
+					var geo = this.getCellGeometry(targetLabels[i]);
+					
+					if (geo != null && geo.relative && geo.x <= 0)
+					{
+						this.model.remove(targetLabels[i]);
+					}
+				}
+				
+				// Removes end arrow and target perimetr Spacing on first segment, start arrow on second segment
+				this.setCellStyles(mxConstants.STYLE_TARGET_PERIMETER_SPACING, null, [newEdge]);
+				this.setCellStyles(mxConstants.STYLE_ENDARROW, mxConstants.NONE, [newEdge]);
+				
+				// Removes start arrow and source perimeter spacing on second segment
+				this.setCellStyles(mxConstants.STYLE_SOURCE_PERIMETER_SPACING, null, [edge]);
+				this.setCellStyles(mxConstants.STYLE_STARTARROW, mxConstants.NONE, [edge]);
+				
+				// Removes entryX/Y and exitX/Y if snapToPoint is used
+				var target = this.model.getTerminal(newEdge, false);
+				
+				if (target != null)
+				{
+					var style = this.getCurrentCellStyle(target);
+					
+					if (style != null && style['snapToPoint'] == '1')
+					{
+						this.setCellStyles(mxConstants.STYLE_EXIT_X, null, [edge]);
+						this.setCellStyles(mxConstants.STYLE_EXIT_Y, null, [edge]);
+						this.setCellStyles(mxConstants.STYLE_ENTRY_X, null, [newEdge]);
+						this.setCellStyles(mxConstants.STYLE_ENTRY_Y, null, [newEdge]);
+					}
+				}
+				
+			}
+			finally
+			{
+				this.model.endUpdate();
+			}
+					
+			return newEdge;
 		};
 		
 		/**
@@ -7539,6 +7771,12 @@ if (typeof mxVertexHandler != 'undefined')
 								
 								this.setConnectionConstraint(cell, src, true, tc);
 								this.setConnectionConstraint(cell, trg, false, sc);
+								
+								// Inverts perimeter spacings
+								var temp = mxUtils.getValue(edgeState.style, mxConstants.STYLE_SOURCE_PERIMETER_SPACING);
+								this.setCellStyles(mxConstants.STYLE_SOURCE_PERIMETER_SPACING, mxUtils.getValue(
+									edgeState.style, mxConstants.STYLE_TARGET_PERIMETER_SPACING), [cell]);
+								this.setCellStyles(mxConstants.STYLE_TARGET_PERIMETER_SPACING, temp, [cell]);
 							}
 		
 							select.push(cell);

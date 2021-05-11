@@ -91,6 +91,13 @@ DrawioFile.prototype.autosaveDelay = 1500;
 DrawioFile.prototype.maxAutosaveDelay = 30000;
 
 /**
+ * Specifies the delay for loading the file after an optimistic sync message.
+ * This should be the delay for the file to be saved minus the delay for the
+ * sync message to travel.
+ */
+DrawioFile.prototype.optimisticSyncDelay = 300;
+
+/**
  * Contains the thread for the next autosave.
  */
 DrawioFile.prototype.autosaveThread = null;
@@ -1196,6 +1203,7 @@ DrawioFile.prototype.loadPatchDescriptor = function(success, error)
 DrawioFile.prototype.patchDescriptor = function(desc, patch)
 {
 	this.setDescriptorEtag(desc, this.getDescriptorEtag(patch));
+	this.descriptorChanged();
 };
 
 /**
@@ -1940,6 +1948,9 @@ DrawioFile.prototype.fileChanged = function()
 			this.ageStart = new Date();
 		}
 		
+		//Send changes immidiately if P2P is enabled
+		this.sendFileChanges();
+		
 		this.autosave(this.autosaveDelay, this.maxAutosaveDelay, mxUtils.bind(this, function(resp)
 		{
 			this.ui.stopSanityCheck();
@@ -1973,13 +1984,22 @@ DrawioFile.prototype.fileChanged = function()
 };
 
 /**
+ * Returns true if the notification to update should be sent
+ * together with the save request.
+ */
+DrawioFile.prototype.isOptimisticSync = function()
+{
+	return false;
+};
+
+/**
  * Creates a secret and token pair for writing a patch to the cache.
  */
 DrawioFile.prototype.createSecret = function(success)
 {
 	var secret = Editor.guid(32);
 	
-	if (this.sync != null)
+	if (this.sync != null && !this.isOptimisticSync())
 	{
 		this.sync.createToken(secret, mxUtils.bind(this, function(token)
 		{
@@ -1998,6 +2018,46 @@ DrawioFile.prototype.createSecret = function(success)
 /**
  * Invokes sync and updates shadow document.
  */
+DrawioFile.prototype.fileSaving = function()
+{
+	if (this.sync != null && this.isOptimisticSync())
+	{
+		this.sync.fileSaving();
+	}
+	
+	if (urlParams['test'] == '1')
+	{
+		EditorUi.debug('DrawioFile.fileSaving', [this]);
+	}
+};
+
+DrawioFile.prototype.sendFileChanges = function()
+{
+	try
+	{
+		if (this.p2pCollab != null && this.sync != null)
+		{
+			//TODO Should we check for modified?
+			this.updateFileData(); //TODO Calling this function ealy could have side effects + overhead of calling it twice (here and in save)
+			this.sync.sendFileChanges(this.ui.getPagesForNode(
+				mxUtils.parseXml(this.getData()).documentElement),
+				this.desc);
+				
+			if (urlParams['test'] == '1')
+			{
+				EditorUi.debug('DrawioFile.sendFileChanges', [this]);
+			}
+		}
+	}
+	catch (e)
+	{
+		console.log(e);
+	}
+};
+
+/**
+ * Invokes sync and updates shadow document.
+ */
 DrawioFile.prototype.fileSaved = function(savedData, lastDesc, success, error, token)
 {
 	this.lastSaved = new Date();
@@ -2009,10 +2069,16 @@ DrawioFile.prototype.fileSaved = function(savedData, lastDesc, success, error, t
 		this.inConflictState = false;
 		this.invalidChecksum = false;
 
-		if (this.sync == null)
+		if (this.sync == null || this.isOptimisticSync())
 		{
 			this.shadowData = savedData;
 			this.shadowPages = null;
+			
+			if (this.sync != null)
+			{
+				this.sync.lastModified = this.getLastModifiedDate();
+				this.sync.resetUpdateStatusThread();
+			}
 			
 			if (success != null)
 			{
@@ -2057,6 +2123,11 @@ DrawioFile.prototype.fileSaved = function(savedData, lastDesc, success, error, t
 		{
 			// ignore
 		}
+	}
+	
+	if (urlParams['test'] == '1')
+	{
+		EditorUi.debug('DrawioFile.fileSaved', [this]);
 	}
 };
 

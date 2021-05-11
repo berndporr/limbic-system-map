@@ -4,7 +4,7 @@ window.DRAW_MATH_URL = 'math';
 window.DRAWIO_BASE_URL = '.'; //Prevent access to online website since it is not allowed
 FeedbackDialog.feedbackUrl = 'https://log.draw.io/email';
 
-//Disables eval for JS (uses shapes.min.js)
+//Disables eval for JS (uses shapes-14-6-5.min.js)
 mxStencilRegistry.allowEval = false;
 
 (function()
@@ -113,6 +113,10 @@ mxStencilRegistry.allowEval = false;
 					if (plugins[i].startsWith('/plugins/'))
 					{
 						plugins[i] = '.' + plugins[i];
+					}
+					else if (plugins[i].startsWith('plugins/'))
+					{
+						plugins[i] = './' + plugins[i];
 					}
 					//Support old plugins added using file:// workaround
 					else if (!plugins[i].startsWith('file://'))
@@ -447,7 +451,6 @@ mxStencilRegistry.allowEval = false;
 						    					else
 						    					{
 						    						asImage = true;
-						    						data = btoa(data);
 						    					}
 					    					}
 						    			}
@@ -473,13 +476,8 @@ mxStencilRegistry.allowEval = false;
 											};
 											
 											var format = path.substring(path.lastIndexOf('.') + 1);
-											
-											if (format == 'svg')
-											{
-												format = 'svg+xml';
-											}
-											
-											img.src = 'data:image/' + format + ';base64,' + data;
+											img.src = (format == 'svg') ? Editor.createSvgDataUri(data) :
+												'data:image/' + format + ';base64,' + data;
 										}
 										else
 										{
@@ -525,40 +523,6 @@ mxStencilRegistry.allowEval = false;
 		// Adds shortcut keys for file operations
 		editorUi.keyHandler.bindAction(78, true, 'new'); // Ctrl+N
 		editorUi.keyHandler.bindAction(79, true, 'open'); // Ctrl+O
-		
-		var copyAsImage = this.actions.addAction('copyAsImage', mxUtils.bind(this, function()
-		{
-			const electron = require('electron');
-			var remote = electron.remote;
-			var clipboard = remote.clipboard;
-			var nativeImage = remote.nativeImage;
-			
-			if (editorUi.spinner.spin(document.body, mxResources.get('exporting')))
-			{
-				editorUi.exportToCanvas(function(canvas)
-				{
-			   		try
-			   		{
-		   				editorUi.spinner.stop();
-			   			var img = nativeImage.createFromDataURL(editorUi.createImageDataUri(canvas, null, 'png'));
-			   			clipboard.writeImage(img);
-			   		}
-			   		catch (e)
-			   		{
-			   			editorUi.handleError(e);
-			   		}
-				}, null, null, null, function(e)
-				{
-					editorUi.spinner.stop();
-					editorUi.handleError(e);
-			   	}, null, null, 1, true, null, null, null, 10);
-			}
-		}));
-		
-		copyAsImage.isEnabled = function()
-		{
-			return editorUi.isExportToCanvas() && !editorUi.editor.graph.isSelectionEmpty();
-		}
 
 		function createGraph()
 		{
@@ -1674,8 +1638,26 @@ mxStencilRegistry.allowEval = false;
 			}
 		}
 	};
-	
-	
+		
+	/**
+	 * Copies the given cells and XML to the clipboard as an embedded image.
+	 */
+	EditorUi.prototype.writeImageToClipboard = function(dataUrl, w, h, error)
+	{
+		try
+		{
+			const electron = require('electron');
+			
+			electron.remote.clipboard.write({image: electron.remote.
+				nativeImage.createFromDataURL(dataUrl), html: '<img src="' +
+				dataUrl + '" width="' + w + '" height="' + h + '">'});
+		}
+		catch (e)
+		{
+			error(e);
+		}
+	};
+
 	/**
 	 * Updates action states depending on the selection.
 	 */

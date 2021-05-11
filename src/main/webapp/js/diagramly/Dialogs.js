@@ -148,7 +148,7 @@ var StorageDialog = function(editorUi, fn, rowLimit)
 				width: 5, // The line thickness
 				radius: 10, // The radius of the inner circle
 				rotate: 0, // The rotation offset
-				color: (uiTheme == 'dark') ? '#c0c0c0' : '#000', // #rgb or #rrggbb
+				color: Editor.isDarkMode() ? '#c0c0c0' : '#000', // #rgb or #rrggbb
 				speed: 1.5, // Rounds per second
 				trail: 60, // Afterglow percentage
 				shadow: false, // Whether to render a shadow
@@ -2371,8 +2371,8 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 	showName = (showName != null) ? showName : true;
 	createOnly = (createOnly != null) ? createOnly : false;
 	leftHighlight = (leftHighlight != null) ? leftHighlight : '#ebf2f9';
-	rightHighlight = (rightHighlight != null) ? rightHighlight : ((uiTheme == 'dark') ? '#a2a2a2' : '#e6eff8');
-	rightHighlightBorder = (rightHighlightBorder != null) ? rightHighlightBorder : ((uiTheme == 'dark') ? '1px dashed #00a8ff' : '1px solid #ccd9ea');
+	rightHighlight = (rightHighlight != null) ? rightHighlight : (Editor.isDarkMode() ? '#a2a2a2' : '#e6eff8');
+	rightHighlightBorder = (rightHighlightBorder != null) ? rightHighlightBorder : (Editor.isDarkMode() ? '1px dashed #00a8ff' : '1px solid #ccd9ea');
 	templateFile = (templateFile != null) ? templateFile : EditorUi.templateFile;
 	
 	var outer = document.createElement('div');
@@ -2827,7 +2827,7 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 		elt.style.height = w + 'px';
 		elt.style.width = h + 'px';
 	
-		if (uiTheme == 'dark')
+		if (Editor.isDarkMode())
 		{
 			elt.style.filter = 'invert(100%)';
 		}
@@ -2888,7 +2888,7 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 			
 			if (title != null)
 			{
-				elt.innerHTML = '<table width="100%" height="100%" style="line-height:1.3em;' + ((uiTheme == 'dark') ? '' : 'background:rgba(255,255,255,0.85);') +
+				elt.innerHTML = '<table width="100%" height="100%" style="line-height:1.3em;' + (Editor.isDarkMode() ? '' : 'background:rgba(255,255,255,0.85);') +
 					'border:inherit;"><tr><td align="center" valign="middle"><span style="display:inline-block;padding:4px 8px 4px 8px;user-select:none;' +
 					'border-radius:3px;background:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;max-width:' + (w - 34) + 'px;">' +
 					mxUtils.htmlEntities(mxResources.get(title, null, title)) + '</span></td></tr></table>';
@@ -3426,26 +3426,22 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 		
 		if (!mxClient.IS_FF && navigator.clipboard != null && mimeType == 'image/png')
 		{
-			copyBtn = mxUtils.button(mxResources.get('copy'), function()
+			copyBtn = mxUtils.button(mxResources.get('copy'), function(evt)
 			{
-				// Only PNG can be copied to clipboard natively
-				if (mimeType == 'image/png')
+				var blob = editorUi.base64ToBlob(temp, 'image/png');
+				var html = '<img src="' + 'data:' + mimeType + ';base64,' + temp + '">';
+				var cbi = new ClipboardItem({'image/png': blob,
+					'text/html': new Blob([html], {type: 'text/html'})});
+				navigator.clipboard.write([cbi]).then(mxUtils.bind(this, function()
 				{
-					var blob = this.base64ToBlob(temp, 'image/png');
-					var cbi = new ClipboardItem({'image/png': blob});
-					navigator.clipboard.write([cbi]);
-				}
-				else
+					editorUi.alert(mxResources.get('copiedToClipboard'));
+				}))['catch'](mxUtils.bind(this, function(e)
 				{
-					var html = '<img src="' + 'data:' + mimeType + ';base64,' + temp + '">';
-					var cbi = new ClipboardItem({'text/html':
-						new Blob([html], {type: 'text/html'})});
-					navigator.clipboard.write([cbi]);
-				}
-				
-				editorUi.alert(mxResources.get('copiedToClipboard'));
+					editorUi.handleError(e);
+				}));
 			});
 			
+			copyBtn.style.marginTop = '6px';
 			copyBtn.className = 'geBtn';
 		}
 		
@@ -3760,7 +3756,7 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 		btns.appendChild(helpBtn);
 	}
 	
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	var cancelBtn = mxUtils.button(mxResources.get((cancelFn != null) ? 'close' : 'cancel'), function()
 	{
 		if (cancelFn != null)
 		{
@@ -3777,7 +3773,7 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 	
 	cancelBtn.className = 'geBtn';
 	
-	if (editorUi.editor.cancelFirst)
+	if (editorUi.editor.cancelFirst && cancelFn == null)
 	{
 		btns.appendChild(cancelBtn);
 	}
@@ -3818,13 +3814,7 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 		openBtn.className = 'geBtn';
 		btns.appendChild(openBtn);
 	}
-	
-	if (copyBtn != null)
-	{
-		btns.appendChild(copyBtn);
-		mxUtils.br(btns);
-	}
-	
+
 	if (CreateDialog.showDownloadButton)
 	{
 		var downloadButton = mxUtils.button(mxResources.get('download'), function()
@@ -3841,6 +3831,12 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 			btns.style.marginTop = '6px';
 		}
 	}
+		
+	if (copyBtn != null)
+	{
+		mxUtils.br(btns);
+		btns.appendChild(copyBtn);
+	}
 	
 	if (/*!mxClient.IS_IOS || */!showButtons)
 	{
@@ -3853,7 +3849,7 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 		btns.appendChild(createBtn);
 	}
 	
-	if (!editorUi.editor.cancelFirst)
+	if (!editorUi.editor.cancelFirst || cancelFn != null)
 	{
 		btns.appendChild(cancelBtn);
 	}
@@ -5045,7 +5041,7 @@ var RevisionDialog = function(editorUi, revs, restoreFn)
 	  corners: 1, // Corner roundness (0..1)
 	  rotate: 0, // The rotation offset
 	  direction: 1, // 1: clockwise, -1: counterclockwise
-	  color: (uiTheme == 'dark') ? '#c0c0c0' : '#000', // #rgb or #rrggbb
+	  color: Editor.isDarkMode() ? '#c0c0c0' : '#000', // #rgb or #rrggbb
 	  speed: 1.4, // Rounds per second
 	  trail: 60, // Afterglow percentage
 	  shadow: false, // Whether to render a shadow
@@ -5606,7 +5602,7 @@ var RevisionDialog = function(editorUi, revs, restoreFn)
 							
 							currentRev = item;
 							currentRow = row;
-							currentRow.style.backgroundColor = (uiTheme == 'dark') ? '#000000' : '#ebf2f9';
+							currentRow.style.backgroundColor = Editor.isDarkMode() ? '#000000' : '#ebf2f9';
 							currentDoc = null;
 							currentXml = null;
 
@@ -5984,7 +5980,7 @@ var DraftDialog = function(editorUi, title, xml, editFn, discardFn, editLabel, d
 				
 				if (bg == null || bg == '' || bg == mxConstants.NONE)
 				{
-					bg = (uiTheme == 'dark') ? 'transparent' : '#ffffff';
+					bg = Editor.isDarkMode() ? 'transparent' : '#ffffff';
 				}
 				
 				container.style.backgroundColor = bg;
@@ -6203,7 +6199,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
     
 	var tmp = document.createElement('div');
 	
-	function testMeta(re, cell, search)
+	function testMeta(re, cell, search, checkIndex)
 	{
 		if (typeof cell.value === 'object' && cell.value.attributes != null)
 		{
@@ -6215,7 +6211,8 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 				{
 					var value = mxUtils.trim(attrs[i].nodeValue.replace(/[\x00-\x1F\x7F-\x9F]|\s+/g, ' ')).toLowerCase();
 					
-					if ((re == null && value.substring(0, search.length) === search) ||
+					if ((re == null && ((checkIndex && value.indexOf(search) >= 0) ||
+						(!checkIndex && value.substring(0, search.length) === search))) ||
 						(re != null && re.test(value)))
 					{
 						return true;
@@ -6354,8 +6351,14 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 						lblPosShift = lblMatchPos;
 					}
 					
-					if ((re == null && (label.substring(0, searchStr.length) === searchStr || (!withReplace && testMeta(re, state.cell, searchStr)))) ||
-						(re != null && (re.test(label) || (!withReplace && testMeta(re, state.cell, searchStr)))))
+					var checkMeta = replaceInput.value == '';
+					var checkIndex = checkMeta;
+					
+					if ((re == null && ((checkIndex && label.indexOf(searchStr) >= 0) ||
+						(!checkIndex && label.substring(0, searchStr.length) === searchStr) ||
+						(checkMeta && testMeta(re, state.cell, searchStr, checkIndex)))) ||
+						(re != null && (re.test(label) || (checkMeta &&
+						testMeta(re, state.cell, searchStr, checkIndex)))))
 					{
 						if (withReplace)
 						{
@@ -6468,6 +6471,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 	resetBtn.style.float = 'none';
 	resetBtn.style.width = '120px';
 	resetBtn.style.marginTop = '6px';
+	resetBtn.style.marginLeft = '8px';
 	resetBtn.style.overflow = 'hidden';
 	resetBtn.style.textOverflow = 'ellipsis';
 	resetBtn.className = 'geBtn';
@@ -6482,7 +6486,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 		try
 		{
 			searchInput.style.backgroundColor = search() ? '' :
-				((uiTheme == 'dark') ? '#ff0000' : '#ffcfcf');
+				(Editor.isDarkMode() ? '#ff0000' : '#ffcfcf');
 		}
 		catch (e)
 		{
@@ -6495,6 +6499,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 	btn.style.float = 'none';
 	btn.style.width = '120px';
 	btn.style.marginTop = '6px';
+	btn.style.marginLeft = '8px';
 	btn.style.overflow = 'hidden';
 	btn.style.textOverflow = 'ellipsis';
 	btn.className = 'geBtn gePrimaryBtn';
@@ -6578,7 +6583,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 					
 					graph.model.setValue(cell, replaceInLabel(lbl, lblMatch, replaceInput.value, lblMatchPos - lblMatch.length, graph.getCurrentCellStyle(cell)));
 					searchInput.style.backgroundColor = search(false, true) ? '' :
-						((uiTheme == 'dark') ? '#ff0000' : '#ffcfcf');
+						(Editor.isDarkMode() ? '#ff0000' : '#ffcfcf');
 				}
 			}
 			catch (e)
@@ -6591,6 +6596,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 		replaceFindBtn.style.float = 'none';
 		replaceFindBtn.style.width = '120px';
 		replaceFindBtn.style.marginTop = '6px';
+		replaceFindBtn.style.marginLeft = '8px';
 		replaceFindBtn.style.overflow = 'hidden';
 		replaceFindBtn.style.textOverflow = 'ellipsis';
 		replaceFindBtn.className = 'geBtn gePrimaryBtn';
@@ -6622,6 +6628,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 		replaceBtn.style.float = 'none';
 		replaceBtn.style.width = '120px';
 		replaceBtn.style.marginTop = '6px';
+		replaceBtn.style.marginLeft = '8px';
 		replaceBtn.style.overflow = 'hidden';
 		replaceBtn.style.textOverflow = 'ellipsis';
 		replaceBtn.className = 'geBtn gePrimaryBtn';
@@ -6687,6 +6694,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 		replaceAllBtn.style.float = 'none';
 		replaceAllBtn.style.width = '120px';
 		replaceAllBtn.style.marginTop = '6px';
+		replaceAllBtn.style.marginLeft = '8px';
 		replaceAllBtn.style.overflow = 'hidden';
 		replaceAllBtn.style.textOverflow = 'ellipsis';
 		replaceAllBtn.className = 'geBtn gePrimaryBtn';
@@ -6705,6 +6713,7 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 		closeBtn.style.float = 'none';
 		closeBtn.style.width = '120px';
 		closeBtn.style.marginTop = '6px';
+		closeBtn.style.marginLeft = '8px';
 		closeBtn.style.overflow = 'hidden';
 		closeBtn.style.textOverflow = 'ellipsis';
 		closeBtn.className = 'geBtn';
@@ -6732,11 +6741,11 @@ var FindWindow = function(ui, x, y, w, h, withReplace)
 			try
 			{
 				searchInput.style.backgroundColor = search() ? '' :
-					((uiTheme == 'dark') ? '#ff0000' : '#ffcfcf');
+					(Editor.isDarkMode() ? '#ff0000' : '#ffcfcf');
 			}
 			catch (e)
 			{
-				searchInput.style.backgroundColor = (uiTheme == 'dark') ? '#ff0000' : '#ffcfcf';
+				searchInput.style.backgroundColor = Editor.isDarkMode() ? '#ff0000' : '#ffcfcf';
 			}
 		}
 	});
@@ -7278,7 +7287,7 @@ var MoreShapesDialog = function(editorUi, expanded, entries)
 				{
 					var title = listEntry.cloneNode(false);
 					title.style.fontWeight = 'bold';
-					title.style.backgroundColor = (uiTheme == 'dark') ? '#505759' : '#e5e5e5';
+					title.style.backgroundColor = Editor.isDarkMode() ? '#505759' : '#e5e5e5';
 					title.style.padding = '6px 0px 6px 20px';
 					mxUtils.write(title, section.title);
 					list.appendChild(title);
@@ -7346,7 +7355,7 @@ var MoreShapesDialog = function(editorUi, expanded, entries)
 									}
 									
 									currentListItem = option;
-									currentListItem.style.backgroundColor = (uiTheme == 'dark') ? '#000000' : '#ebf2f9';
+									currentListItem.style.backgroundColor = Editor.isDarkMode() ? '#000000' : '#ebf2f9';
 									
 									if (evt != null)
 									{
@@ -8533,7 +8542,7 @@ var LibraryDialog = function(editorUi, name, library, initialImages, file, mode)
 					label.style.bottom = '-18px';
 					label.style.left = '10px';
 					label.style.right = '10px';
-					label.style.backgroundColor = (uiTheme == 'dark') ? '#2a2a2a' : '#ffffff';
+					label.style.backgroundColor = Editor.isDarkMode() ? '#2a2a2a' : '#ffffff';
 					label.style.overflow = 'hidden';
 					label.style.textAlign = 'center';
 					

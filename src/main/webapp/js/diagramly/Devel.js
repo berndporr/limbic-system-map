@@ -19,6 +19,8 @@ if (!mxIsElectron && location.protocol !== 'http:')
 				//----------------------------------------------------------//
 				//------------- Bootstrap script in index.html -------------//
 				//----------------------------------------------------------//
+				'\'sha256-5DtSB5mj34lxcEf+HFWbBLEF49xxJaKnWGDWa/utwQA=\' ' +
+				// Version 14.6.5
 				'\'sha256-8HtpzsH4zj5+RKfTWMxPmWJKBu0OYbn+WuPrLbVky+g=\' ' +
 				// Version 14.1.1
 				'\'sha256-gCA3yqbX5kV5cXQOyvSd4v54e8cOLCBlaKU4tuhJF3Y=\' ' +
@@ -51,6 +53,7 @@ if (!mxIsElectron && location.protocol !== 'http:')
 				'https://*.googleapis.com wss://*.pusher.com https://*.pusher.com ' +
 				'https://api.github.com https://raw.githubusercontent.com https://gitlab.com ' +
 				'https://graph.microsoft.com https://*.sharepoint.com  https://*.1drv.com ' +
+				'https://dl.dropboxusercontent.com ' +
 				'https://*.google.com https://fonts.gstatic.com https://fonts.googleapis.com; ' +
 			// font-src about: is required for MathJax HTML-CSS output with STIX
 			'img-src * data:; media-src * data:; font-src * about:; ' +
@@ -79,7 +82,8 @@ if (!mxIsElectron && location.protocol !== 'http:')
 					replace(/%style-src%/g, '').
 					replace(/  /g, ' ') + ' frame-ancestors \'self\' https://teams.microsoft.com;';
 			console.log('app.diagrams.net:', app_diagrams_net);
-			var ac_draw_io = csp.replace(/%script-src%/g, 'https://aui-cdn.atlassian.com https://connect-cdn.atl-paas.net https://ajax.googleapis.com').
+			// TODO remove https://ajax.googleapis.com April 2022. It's old jquery domain
+			var ac_draw_io = csp.replace(/%script-src%/g, 'https://aui-cdn.atlassian.com https://connect-cdn.atl-paas.net https://ajax.googleapis.com https://cdnjs.cloudflare.com').
 					replace(/%frame-src%/g, 'https://www.lucidchart.com https://app.lucidchart.com').
 					replace(/%style-src%/g, 'https://aui-cdn.atlassian.com https://*.atlassian.net').
 					replace(/%connect-src%/g, '').
@@ -95,7 +99,7 @@ if (!mxIsElectron && location.protocol !== 'http:')
 					'https://app.lucidchart.com; style-src \'self\' \'unsafe-inline\'; frame-src https://www.lucidchart.com https://app.lucidchart.com;');
 			console.log('Development:', devCsp);
 			
-			console.log('Header Worder:', 'let securityHeaders =', JSON.stringify({
+			console.log('Header Worker:', 'let securityHeaders =', JSON.stringify({
 				online: {
 					"Content-Security-Policy" : app_diagrams_net,
 					"Permissions-Policy" : "microphone=()"
@@ -116,7 +120,7 @@ if (!mxIsElectron && location.protocol !== 'http:')
 		}
 	})();
 }
-			
+
 mxscript(drawDevUrl + 'js/cryptojs/aes.min.js');
 mxscript(drawDevUrl + 'js/spin/spin.min.js');
 mxscript(drawDevUrl + 'js/deflate/pako.min.js');
@@ -262,6 +266,9 @@ mxscript(drawDevUrl + 'js/jszip/jszip.min.js');
 
 // GraphMl Import
 mxscript(drawDevUrl + 'js/diagramly/graphml/mxGraphMlCodec.js');
+
+// P2P Collab
+mxscript(drawDevUrl + 'js/diagramly/P2PCollab.js');
 
 // Org Chart Layout
 if (urlParams['orgChartDev'] == '1')
