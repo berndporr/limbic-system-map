@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2006-2017, JGraph Ltd
- * Copyright (c) 2006-2017, Gaudenz Alder
+ * Copyright (c) 2006-2017, JGraph Holdings Ltd
+ * Copyright (c) 2006-2017, draw.io AG
  */
 DriveFile = function(ui, data, desc)
 {
@@ -35,8 +35,8 @@ DriveFile.prototype.getSize = function()
  */
 DriveFile.prototype.isRestricted = function()
 {
-	return this.desc.userPermission != null && this.desc.labels != null &&
-		this.desc.userPermission.role == 'reader' && this.desc.labels.restricted;
+	return DrawioFile.RESTRICT_EXPORT || (this.desc.userPermission != null && this.desc.labels != null &&
+		this.desc.userPermission.role == 'reader' && this.desc.labels.restricted);
 };
 
 /**
@@ -48,7 +48,7 @@ DriveFile.prototype.isConflict = function(err)
 };
 
 /**
- * Returns the current etag.
+ * Returns the current Google Drive user or null.
  */
 DriveFile.prototype.getCurrentUser = function()
 {
@@ -56,10 +56,7 @@ DriveFile.prototype.getCurrentUser = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns App.MODE_GOOGLE.
  */
 DriveFile.prototype.getMode = function()
 {
@@ -67,7 +64,34 @@ DriveFile.prototype.getMode = function()
 };
 
 /**
- * Returns true if copy, export and print are not allowed for this file.
+ * Returns the URL for opening the file in Google Drive.
+ */
+DriveFile.prototype.getFileUrl = function()
+{
+	return 'https://drive.google.com/open?authuser=0&id=' + this.getId();
+};
+
+/**
+ * Returns the URL of the parent folder of the file in Google Drive, or the
+ * URL of the trash if the file is trashed.
+ */
+DriveFile.prototype.getFolderUrl = function()
+{
+	if (this.desc.labels != null && this.desc.labels.trashed)
+	{
+		return 'https://drive.google.com/drive/trash';
+	}
+	else
+	{
+		return (this.desc.parents != null && this.desc.parents.length > 0) ?
+			'https://drive.google.com/drive/folders/' +
+			this.desc.parents[0].id : null;
+	}
+};
+
+/**
+ * Passes the download link of the file to the given function if the file is
+ * shared with anyone, otherwise null.
  */
 DriveFile.prototype.getPublicUrl = function(fn)
 {
@@ -107,10 +131,7 @@ DriveFile.prototype.isAutosaveOptional = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns true if the file is editable.
  */
 DriveFile.prototype.isRenamable = function()
 {
@@ -118,21 +139,7 @@ DriveFile.prototype.isRenamable = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
- */
-DriveFile.prototype.isMovable = function()
-{
-	return this.isEditable();
-};
-
-/**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns true if the file is in the Google Drive trash.
  */
 DriveFile.prototype.isTrashed = function()
 {
@@ -140,10 +147,7 @@ DriveFile.prototype.isTrashed = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Updates the file data and saves the file to Google Drive.
  */
 DriveFile.prototype.save = function(revision, success, error, unloading, overwrite)
 {
@@ -154,13 +158,14 @@ DriveFile.prototype.save = function(revision, success, error, unloading, overwri
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Saves the file to Google Drive unless a save is in progress. On a
+ * conflict, the remote changes are merged via the sync object and the save
+ * is retried.
  */
 DriveFile.prototype.saveFile = function(title, revision, success, error, unloading, overwrite)
 {
+	var wasSaving = this.savingFile;
+
 	try
 	{
 		if (!this.isEditable())
@@ -184,8 +189,13 @@ DriveFile.prototype.saveFile = function(title, revision, success, error, unloadi
 					try
 					{
 						var lastDesc = this.desc;
+						
+						if (this.sync != null)
+						{
+							this.sync.fileSaving();
+						}
 	
-						this.ui.drive.saveFile(this, realRevision, mxUtils.bind(this, function(resp, savedData)
+						this.ui.drive.saveFile(this, realRevision, mxUtils.bind(this, function(resp, savedData, pages, checksum)
 						{
 							try
 							{
@@ -209,24 +219,29 @@ DriveFile.prototype.saveFile = function(title, revision, success, error, unloadi
 											this.saveDelay)));
 									this.desc = resp;
 									
-									// Shows possible errors but keeps the modified flag as the
-									// file was saved but the cache entry could not be written
-									if (token != null)
+									this.fileSaved(savedData, lastDesc, mxUtils.bind(this, function()
 									{
-										this.fileSaved(savedData, lastDesc, mxUtils.bind(this, function()
+										this.contentChanged();
+
+										// Counts the user as an editor of the month. Must
+										// never turn a successful save into an error.
+										if (this.ui.reportDriveEdit != null)
 										{
-											this.contentChanged();
-											
-											if (success != null)
+											try
 											{
-												success(resp);
+												this.ui.reportDriveEdit();
 											}
-										}), error, token);
-									}
-									else if (success != null)
-									{
-										success(resp);
-									}
+											catch (e)
+											{
+												// ignore
+											}
+										}
+
+										if (typeof success === 'function')
+										{
+											success(resp);
+										}
+									}), error, token, pages, checksum);
 								}
 								else if (error != null)
 								{
@@ -319,12 +334,22 @@ DriveFile.prototype.saveFile = function(title, revision, success, error, unloadi
 					}
 				});
 				
-				doSave(overwrite, revision);				
+				doSave(overwrite, revision);
 			}));
+		}
+		else if (error != null)
+		{
+			error({code: App.ERROR_BUSY, message: mxResources.get('busy')});
 		}
 	}
 	catch (e)
 	{
+		// Resets saving state only if it was set by this call
+		if (!wasSaving)
+		{
+			this.savingFile = false;
+		}
+
 		if (error != null)
 		{
 			error(e);
@@ -337,9 +362,11 @@ DriveFile.prototype.saveFile = function(title, revision, success, error, unloadi
 };
 
 /**
- * Shows a conflict dialog to the user.
+ * Copies the file to the given filename or a generated copy filename in
+ * Google Drive and saves the current data to the copy. Restricted files use
+ * the default implementation.
  */
-DriveFile.prototype.copyFile = function(success, error)
+DriveFile.prototype.copyFile = function(success, error, filename)
 {
 	if (!this.isRestricted())
 	{
@@ -356,7 +383,7 @@ DriveFile.prototype.copyFile = function(success, error)
 					error(e);
 				}
 			}
-		}), error, true);
+		}), error, (filename != null) ? filename : this.ui.getCopyFilename(this, true));
 	}
 	else
 	{
@@ -365,31 +392,47 @@ DriveFile.prototype.copyFile = function(success, error)
 };
 
 /**
- * Shows a conflict dialog to the user.
+ * Copies the file in Google Drive to the given filename and makes this file
+ * refer to the copy.
  */
-DriveFile.prototype.makeCopy = function(success, error, timestamp)
+DriveFile.prototype.makeCopy = function(success, error, filename)
 {
 	if (this.ui.spinner.spin(document.body, mxResources.get('saving')))
 	{
 		// Uses copyFile internally which is a remote REST call with the advantage of keeping
 		// the parents of the file in-place, but copies the remote file contents so needs to
 		// be updated as soon as we have the ID.
-		this.saveAs(this.ui.getCopyFilename(this, timestamp), mxUtils.bind(this, function(resp)
+		this.saveAs(filename, mxUtils.bind(this, function(resp)
 		{
+			// Disconnects sync from the original file's channel
+			// and restarts on the copy's channel
+			if (this.sync != null)
+			{
+				this.sync.stop();
+				this.sync.channelId = null;
+				this.sync.key = null;
+			}
+
 			this.desc = resp;
+
+			// Restarts sync on the copy's channel before save
+			// so that createToken uses the correct channel ID
+			if (this.sync != null)
+			{
+				this.sync.start();
+			}
+
 			this.ui.spinner.stop();
 			this.setModified(false);
-			
-			this.backupPatch = null;
 			this.invalidChecksum = false;
 			this.inConflictState = false;
-			
+
 			this.descriptorChanged();
 			success();
 		}), mxUtils.bind(this, function()
 		{
 			this.ui.spinner.stop();
-			
+
 			if (error != null)
 			{
 				error();
@@ -399,10 +442,8 @@ DriveFile.prototype.makeCopy = function(success, error, timestamp)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Copies the file in Google Drive to a file with the given name and passes
+ * the descriptor of the copy to success.
  */
 DriveFile.prototype.saveAs = function(filename, success, error)
 {
@@ -410,15 +451,11 @@ DriveFile.prototype.saveAs = function(filename, success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Renames the file to the given title. The file is saved again if the file
+ * extension has changed.
  */
 DriveFile.prototype.rename = function(title, success, error)
 {
-	var etag = this.getCurrentEtag();
-	
 	this.ui.drive.renameFile(this.getId(), title, mxUtils.bind(this, function(desc)
 	{
 		if (!this.hasSameExtension(title, this.getTitle()))
@@ -427,7 +464,7 @@ DriveFile.prototype.rename = function(title, success, error)
 
 			if (this.sync != null)
 			{
-				this.sync.descriptorChanged(etag);
+				this.sync.descriptorChanged();
 			}
 			
 			this.save(true, success, error);
@@ -439,9 +476,9 @@ DriveFile.prototype.rename = function(title, success, error)
 			
 			if (this.sync != null)
 			{
-				this.sync.descriptorChanged(etag);
+				this.sync.descriptorChanged();
 			}
-			
+
 			if (success != null)
 			{
 				success(desc);
@@ -451,10 +488,7 @@ DriveFile.prototype.rename = function(title, success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Moves the file to the Google Drive folder with the given ID.
  */
 DriveFile.prototype.move = function(folderId, success, error)
 {
@@ -471,21 +505,15 @@ DriveFile.prototype.move = function(folderId, success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Shows the Google Drive sharing dialog for the file.
  */
 DriveFile.prototype.share = function()
 {
-	this.ui.drive.showPermissions(this.getId());
+	this.ui.drive.showPermissions(this.getId(), this);
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the title of the file.
  */
 DriveFile.prototype.getTitle = function()
 {
@@ -493,10 +521,7 @@ DriveFile.prototype.getTitle = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the hash of the file, which is G followed by the file ID.
  */
 DriveFile.prototype.getHash = function()
 {
@@ -504,10 +529,7 @@ DriveFile.prototype.getHash = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the Google Drive ID of the file.
  */
 DriveFile.prototype.getId = function()
 {
@@ -515,10 +537,8 @@ DriveFile.prototype.getId = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns true if the file is editable and the user can edit it in Google
+ * Drive.
  */
 DriveFile.prototype.isEditable = function()
 {
@@ -532,6 +552,73 @@ DriveFile.prototype.isEditable = function()
 DriveFile.prototype.isSyncSupported = function()
 {
 	return true;
+};
+
+/**
+ * Hook for subclassers.
+ */
+DriveFile.prototype.isRealtimeSupported = function()
+{
+	return true;
+};
+
+/**
+ * Returns true if all changes should be sent out immediately.
+ */
+DriveFile.prototype.isRealtimeOptional = function()
+{
+	return this.sync != null && this.sync.isConnected();
+};
+
+/**
+ * Returns true if all changes should be sent out immediately.
+ */
+DriveFile.prototype.setRealtimeEnabled = function(value, success, error)
+{
+	if (this.sync != null)
+	{
+		this.ui.drive.executeRequest({
+			'url': '/files/' + this.getId() + '/properties?alt=json&supportsAllDrives=true',
+			'method': 'POST',
+			'contentType': 'application/json; charset=UTF-8',
+			'params': {
+				'key': 'collaboration',
+				'value': (value) ? 'enabled' :
+					((urlParams['fast-sync'] != '0') ?
+						'disabled' : '')
+			}
+		}, mxUtils.bind(this, function()
+		{
+			this.loadDescriptor(mxUtils.bind(this, function(desc)
+			{
+				if (desc != null)
+				{
+					this.sync.descriptorChanged();
+					this.sync.updateDescriptor(desc);
+					success();
+				}
+				else
+				{
+					error();
+				}
+			}), error);
+		}), error);
+	}
+	else
+	{
+		error();
+	}
+};
+
+/**
+ * Returns true if all changes should be sent out immediately.
+ */
+DriveFile.prototype.isRealtimeEnabled = function()
+{
+	var collab = this.ui.drive.getCustomProperty(this.desc, 'collaboration');
+
+	return (DrawioFile.prototype.isRealtimeEnabled.apply(this, arguments) &&
+		collab != 'disabled') || (Editor.enableRealtime && collab == 'enabled');
 };
 
 /**
@@ -587,7 +674,21 @@ DriveFile.prototype.getRevisions = function(success, error)
  */
 DriveFile.prototype.getLatestVersion = function(success, error)
 {
-	this.ui.drive.getFile(this.getId(), success, error, true);
+	this.ui.drive.getFile(this.getId(), mxUtils.bind(this, function(file)
+	{
+		// getFile converts files that need an import (PNG without
+		// diagram data, PDF, VSDX, Gliffy) into a LocalFile whose
+		// descriptor is undefined, which must not replace the
+		// Drive descriptor of this file
+		if (file == null || file instanceof DriveFile)
+		{
+			success(file);
+		}
+		else if (error != null)
+		{
+			error({message: mxResources.get('notADiagramFile')});
+		}
+	}), error, true);
 };
 
 /**
@@ -638,7 +739,30 @@ DriveFile.prototype.setDescriptor = function(desc)
 };
 
 /**
- * Returns the etag from the given descriptor.
+ * Returns the checksum from the given descriptor.
+ */
+DriveFile.prototype.getDescriptorChecksum = function(desc)
+{
+	var value = this.ui.drive.getCustomProperty(desc, 'checksum');
+	var secret = this.getDescriptorSecret(desc);
+	var result = null;
+
+	if (value != null && secret != null)
+	{
+		tokens = value.split(':');
+
+		// Checks if checksum matches current secret
+		if (tokens.length == 2 && tokens[0] == secret)
+		{
+			result = tokens[1];
+		}
+	}
+
+	return result;
+};
+
+/**
+ * Returns the secret from the given descriptor.
  */
 DriveFile.prototype.getDescriptorSecret = function(desc)
 {
@@ -712,6 +836,41 @@ DriveFile.prototype.loadDescriptor = function(success, error)
 };
 
 /**
+ * A save error is only a write revoke if the freshly loaded descriptor
+ * confirms the file is no longer editable; an unreachable descriptor
+ * stays transient so flaky requests never lock the session read-only.
+ */
+DriveFile.prototype.verifyWriteRevoked = function(callback)
+{
+	this.loadDescriptor(mxUtils.bind(this, function(desc)
+	{
+		if (desc != null)
+		{
+			// Answers from the loaded descriptor WITHOUT adopting it.
+			// A descriptor carries the head revision, the checksum and
+			// the secret, and a peer may have committed a revision
+			// since this file's last merge: adopting it here moved the
+			// known revision PAST content that never reached the
+			// shadow, so the peer's save notification was then skipped
+			// as already seen (source == target in doCatchup) and the
+			// next save committed the stale base over it - a silent
+			// lost update of a committed revision. Those fields belong
+			// to the save and merge chain; a confirmed revocation is
+			// recorded in writeRevoked, which gates isEditable itself.
+			callback(!(DrawioFile.prototype.isEditable.apply(this) &&
+				desc.editable));
+		}
+		else
+		{
+			callback(false);
+		}
+	}), function()
+	{
+		callback(false);
+	});
+};
+
+/**
  * Are comments supported
  */
 DriveFile.prototype.commentsSupported = function()
@@ -720,47 +879,150 @@ DriveFile.prototype.commentsSupported = function()
 };
 
 /**
+ * Are comments anchored to shapes supported
+ */
+DriveFile.prototype.anchoredCommentsSupported = function()
+{
+	return true;
+};
+
+/**
+ * Are @mentions in comments supported
+ */
+DriveFile.prototype.mentionsSupported = function()
+{
+	return true;
+};
+
+/**
+ * Fields returned for comments and their replies. The v3 comments
+ * endpoints error without an explicit fields parameter.
+ */
+DriveFile.prototype.commentFields = 'id,content,createdTime,modifiedTime,deleted,resolved,anchor,' +
+	'author(displayName,photoLink,me),replies(id,content,createdTime,modifiedTime,deleted,' +
+	'author(displayName,photoLink,me))';
+
+/**
+ * Returns the URL for the v3 comments API of this file. path is appended
+ * to the comments collection (eg. '/id/replies'), fields is required for
+ * all v3 comments requests except DELETE.
+ */
+DriveFile.prototype.getCommentUrl = function(path, fields)
+{
+	return this.ui.drive.GDriveV3BaseUrl + '/files/' + this.getId() + '/comments' + path +
+		((fields != null) ? '?fields=' + encodeURIComponent(fields) : '');
+};
+
+/**
+ * Returns the Drive API anchor string for the given drawio anchor object.
+ * Drive stores anchors of third-party file types as opaque strings (such
+ * comments show as unanchored in the Drive UI). Anchors are immutable in
+ * the API so there is no re-anchoring.
+ */
+DriveFile.prototype.encodeCommentAnchor = function(anchor)
+{
+	return JSON.stringify({'r': 'head', 'a': [{'drawio': anchor}]});
+};
+
+/**
+ * Returns the drawio anchor object from the given Drive API anchor string
+ * or null. Malformed anchors and anchors written by other tools are
+ * ignored.
+ */
+DriveFile.prototype.decodeCommentAnchor = function(anchorStr)
+{
+	try
+	{
+		if (anchorStr != null)
+		{
+			var obj = JSON.parse(anchorStr);
+
+			if (obj != null && obj.a != null && obj.a.length > 0)
+			{
+				for (var i = 0; i < obj.a.length; i++)
+				{
+					if (obj.a[i] != null && typeof obj.a[i].drawio === 'object' &&
+						obj.a[i].drawio !== null)
+					{
+						return obj.a[i].drawio;
+					}
+				}
+			}
+		}
+	}
+	catch (e)
+	{
+		// ignore
+	}
+
+	return null;
+};
+
+/**
  * Get comments of the file
  */
 DriveFile.prototype.getComments = function(success, error)
 {
 	var currentUser = this.ui.getCurrentUser();
-	
-	function driveCommentToDrawio(file, gComment, pCommentId)
+	var file = this;
+
+	function driveCommentToDrawio(gComment, pCommentId)
 	{
 		if (gComment.deleted) return null; //skip deleted comments
-		
-		var comment = new DriveComment(file, gComment.commentId || gComment.replyId, gComment.content, 
-				gComment.modifiedDate, gComment.createdDate, gComment.status == 'resolved',
-				gComment.author.isAuthenticatedUser? currentUser :
-				new DrawioUser(gComment.author.permissionId, gComment.author.emailAddress,
-						gComment.author.displayName, gComment.author.picture.url), pCommentId);
-		
+
+		var comment = new DriveComment(file, gComment.id, gComment.content,
+				gComment.modifiedTime, gComment.createdTime, gComment.resolved == true,
+				(gComment.author != null && gComment.author.me) ? currentUser :
+				new DrawioUser(null, null, (gComment.author != null) ?
+						gComment.author.displayName : null, (gComment.author != null) ?
+						gComment.author.photoLink : null), pCommentId);
+
+		if (pCommentId == null)
+		{
+			comment.anchor = file.decodeCommentAnchor(gComment.anchor);
+		}
+
 		for (var i = 0; gComment.replies != null && i < gComment.replies.length; i++)
 		{
-			comment.addReplyDirect(driveCommentToDrawio(file, gComment.replies[i], gComment.commentId));
+			comment.addReplyDirect(driveCommentToDrawio(gComment.replies[i], gComment.id));
 		}
-		
+
 		return comment;
 	};
-	
-	this.ui.drive.executeRequest(
+
+	var comments = [];
+
+	var fetchPage = mxUtils.bind(this, function(pageToken)
 	{
-		url: '/files/' + this.getId() + '/comments'
-	},
-	mxUtils.bind(this, function(resp)
-	{
-		var comments = [];
-		
-		for (var i = 0; i < resp.items.length; i++)
+		this.ui.drive.executeRequest(
 		{
-			var comment = driveCommentToDrawio(this, resp.items[i]);
-			
-			if (comment != null) comments.push(comment);
-		}
-		
-		success(comments);
-	}), error);
+			fullUrl: this.getCommentUrl('', 'nextPageToken,comments(' + this.commentFields + ')') +
+				'&pageSize=100' + ((pageToken != null) ?
+				'&pageToken=' + encodeURIComponent(pageToken) : '')
+		},
+		mxUtils.bind(this, function(resp)
+		{
+			var items = (resp != null && resp.comments != null) ? resp.comments : [];
+
+			for (var i = 0; i < items.length; i++)
+			{
+				var comment = driveCommentToDrawio(items[i]);
+
+				if (comment != null) comments.push(comment);
+			}
+
+			if (resp != null && resp.nextPageToken != null)
+			{
+				fetchPage(resp.nextPageToken);
+			}
+			else
+			{
+				success(comments);
+			}
+		}), error);
+	});
+
+	fetchPage(null);
 };
 
 /**
@@ -769,17 +1031,80 @@ DriveFile.prototype.getComments = function(success, error)
 DriveFile.prototype.addComment = function(comment, success, error)
 {
 	var body = {'content': comment.content};
-	
+
+	if (comment.anchor != null)
+	{
+		body.anchor = this.encodeCommentAnchor(comment.anchor);
+	}
+
 	this.ui.drive.executeRequest(
 	{
-		url: '/files/' + this.getId() + '/comments',
+		fullUrl: this.getCommentUrl('', 'id'),
 		method: 'POST',
 		params: body
 	},
 	mxUtils.bind(this, function(resp)
 	{
-		success(resp.commentId); //pass comment id
+		success(resp.id); //pass comment id
 	}), error);
+};
+
+/**
+ * Get the people that can be mentioned in comments of the file. Mentions
+ * are limited to the people with access to the file as the API cannot
+ * start Drive's share-on-mention flow.
+ */
+DriveFile.prototype.getMentionCandidates = function(success, error)
+{
+	if (this.mentionCandidates != null)
+	{
+		success(this.mentionCandidates);
+
+		return;
+	}
+
+	var candidates = [];
+
+	var fetchPage = mxUtils.bind(this, function(pageToken)
+	{
+		this.ui.drive.executeRequest(
+		{
+			fullUrl: this.ui.drive.GDriveV3BaseUrl + '/files/' + this.getId() +
+				'/permissions?supportsAllDrives=true&pageSize=100&fields=' +
+				encodeURIComponent('nextPageToken,permissions(type,deleted,emailAddress,displayName,photoLink)') +
+				((pageToken != null) ? '&pageToken=' + encodeURIComponent(pageToken) : '')
+		},
+		mxUtils.bind(this, function(resp)
+		{
+			var items = (resp != null && resp.permissions != null) ? resp.permissions : [];
+
+			for (var i = 0; i < items.length; i++)
+			{
+				// Mentions need an email address so people and groups are
+				// included, not domain or anyone-with-the-link permissions
+				if ((items[i].type == 'user' || items[i].type == 'group') &&
+					!items[i].deleted && items[i].emailAddress != null)
+				{
+					var candidate = new DrawioUser(null, items[i].emailAddress,
+						items[i].displayName, items[i].photoLink);
+					candidate.isGroup = items[i].type == 'group';
+					candidates.push(candidate);
+				}
+			}
+
+			if (resp != null && resp.nextPageToken != null)
+			{
+				fetchPage(resp.nextPageToken);
+			}
+			else
+			{
+				this.mentionCandidates = candidates;
+				success(candidates);
+			}
+		}), error);
+	});
+
+	fetchPage(null);
 };
 
 /**

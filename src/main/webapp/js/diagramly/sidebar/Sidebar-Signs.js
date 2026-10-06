@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
 (function()
 {
 	Sidebar.prototype.addSignsPalette = function(signs, dir)
@@ -7,7 +11,7 @@
 			this.setCurrentSearchEntryLibrary('signs', 'signs' + signs[i]);
 			this.addStencilPalette('signs' + signs[i], 'Signs / ' + signs[i],
 				dir + '/signs/' + signs[i].toLowerCase() + '.xml',
-				';html=1;pointerEvents=1;fillColor=#000000;strokeColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;',	
+				';html=1;pointerEvents=1;fillColor=#000000;strokeColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;sketch=0;',	
 				null, null, null, null, null, 'signs');
 		}
 

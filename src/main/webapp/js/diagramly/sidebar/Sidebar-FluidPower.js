@@ -1,10 +1,14 @@
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
 (function()
 {
 	Sidebar.prototype.addFluidPowerPalette = function()
 	{
 		var w = 2;
 		var h = 2;
-		var s = mxConstants.STYLE_VERTICAL_LABEL_POSITION + '=bottom;aspect=fixed;html=1;' + mxConstants.STYLE_VERTICAL_ALIGN + '=top;strokeColor=#000000;fillColor=#000000;align=center;outlineConnect=0;shape=mxgraph.fluid_power.';
+		var s = mxConstants.STYLE_VERTICAL_LABEL_POSITION + '=bottom;aspect=fixed;html=1;' + mxConstants.STYLE_VERTICAL_ALIGN + '=top;fillColor=strokeColor;align=center;outlineConnect=0;shape=mxgraph.fluid_power.';
 		var gn = 'mxgraph.fluid_power';
 		var dt = '';
 		this.setCurrentSearchEntryLibrary('fluid_power');

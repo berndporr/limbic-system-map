@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2006-2017, JGraph Ltd
- * Copyright (c) 2006-2017, Gaudenz Alder
+ * Copyright (c) 2006-2017, JGraph Holdings Ltd
+ * Copyright (c) 2006-2017, draw.io AG
  */
 DropboxFile = function(ui, data, stat)
 {
@@ -13,10 +13,7 @@ DropboxFile = function(ui, data, stat)
 mxUtils.extend(DropboxFile, DrawioFile);
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the path of the file without the leading slash.
  */
 DropboxFile.prototype.getId = function()
 {
@@ -24,10 +21,7 @@ DropboxFile.prototype.getId = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the hash of the file, which is D followed by the URI-encoded ID.
  */
 DropboxFile.prototype.getHash = function()
 {
@@ -35,10 +29,7 @@ DropboxFile.prototype.getHash = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns App.MODE_DROPBOX.
  */
 DropboxFile.prototype.getMode = function()
 {
@@ -54,10 +45,34 @@ DropboxFile.prototype.isAutosaveOptional = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Dropbox storage is deprecated, existing files are read-only until
+ * support ends. Use Save As to move files to another storage.
+ */
+DropboxFile.prototype.isEditable = function()
+{
+	return false;
+};
+
+/**
+ * Shows the deprecation notice when the file is opened.
+ */
+DropboxFile.prototype.open = function()
+{
+	DrawioFile.prototype.open.apply(this, arguments);
+
+	if (!this.ui.editor.isChromelessView())
+	{
+		this.ui.showBanner('DropboxDeprecationFooter',
+			'Dropbox support is ending. Click here to move this diagram.',
+			mxUtils.bind(this, function()
+			{
+				this.ui.actions.get('saveAs').funct();
+			}));
+	}
+};
+
+/**
+ * Returns the name of the file.
  */
 DropboxFile.prototype.getTitle = function()
 {
@@ -65,14 +80,11 @@ DropboxFile.prototype.getTitle = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Renaming is disabled as part of the Dropbox deprecation.
  */
 DropboxFile.prototype.isRenamable = function()
 {
-	return true;
+	return false;
 };
 
 /**
@@ -89,6 +101,24 @@ DropboxFile.prototype.getSize = function()
 DropboxFile.prototype.isRevisionHistorySupported = function()
 {
 	return true;
+};
+
+/**
+ * Returns the URL of the file in the Dropbox web interface.
+ */
+DropboxFile.prototype.getFileUrl = function()
+{
+	return 'https://www.dropbox.com/home/Apps' + this.ui.dropbox.appPath + this.stat.path_display;
+};
+
+/**
+ * Returns the URL of the folder of the file in the Dropbox web interface.
+ */
+DropboxFile.prototype.getFolderUrl = function()
+{
+	var url = this.getFileUrl();
+				
+	return url.substring(0, url.lastIndexOf('/'));
 };
 
 /**
@@ -154,10 +184,7 @@ DropboxFile.prototype.updateDescriptor = function(newFile)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Saves the file under its current title.
  */
 DropboxFile.prototype.save = function(revision, success, error, unloading, overwrite)
 {
@@ -165,10 +192,7 @@ DropboxFile.prototype.save = function(revision, success, error, unloading, overw
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Saves the file with the given title.
  */
 DropboxFile.prototype.saveAs = function(title, success, error)
 {
@@ -176,10 +200,8 @@ DropboxFile.prototype.saveAs = function(title, success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Updates the file data using the extension of the given title and saves
+ * the file with the given title.
  */
 DropboxFile.prototype.doSave = function(title, revision, success, error, unloading, overwrite)
 {
@@ -195,10 +217,9 @@ DropboxFile.prototype.doSave = function(title, revision, success, error, unloadi
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Writes the file to Dropbox with the given title unless a save is in
+ * progress. Asks the user before replacing an existing file if the title
+ * has changed.
  */
 DropboxFile.prototype.saveFile = function(title, revision, success, error)
 {
@@ -250,7 +271,7 @@ DropboxFile.prototype.saveFile = function(title, revision, success, error)
 						}), folder);
 					});
 					
-					if (this.ui.useCanvasForExport && /(\.png)$/i.test(this.getTitle()))
+					if (Editor.useCanvasForExport && /(\.png)$/i.test(this.getTitle()))
 					{
 						var p = this.ui.getPngFileProperties(this.ui.fileNode);
 						
@@ -301,10 +322,8 @@ DropboxFile.prototype.saveFile = function(title, revision, success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Renames the file to the given title. The file is saved again if the file
+ * extension has changed.
  */
 DropboxFile.prototype.rename = function(title, success, error)
 {

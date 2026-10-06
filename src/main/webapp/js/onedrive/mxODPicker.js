@@ -1,4 +1,9 @@
-function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRecentList, addToRecent, pickedFileCallback, errorFn, foldersOnly, backFn, withSubmitBtn, withThumbnail, initFolderPath)
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
+function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRecentList, addToRecent, pickedFileCallback,
+	errorFn, foldersOnly, backFn, withSubmitBtn, withThumbnail, initFolderPath, acceptAllFiles)
 {
 	var previewHtml = '';
 	
@@ -52,28 +57,48 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		elem = elem || document;
 		return elem.querySelectorAll(selector);
 	};
+
+	// Shared items and shortcuts to items in other drives have their
+	// name and file/folder facets nested inside the remoteItem facet
+	function getItemName(item)
+	{
+		return item.name || (item.remoteItem != null? item.remoteItem.name : null);
+	};
+
+	function getItemFolder(item)
+	{
+		return item.folder || (item.remoteItem != null? item.remoteItem.folder : null);
+	};
+
+	function getItemFile(item)
+	{
+		return item.file || (item.remoteItem != null? item.remoteItem.file : null);
+	};
 	
 	var html = 
 			'<div class="odCatsList">' +
 				'<div class="odCatsListLbl">OneDrive</div>' + 
-				'<div id="odFiles" class="odCatListTitle odCatSelected">' + mxResources.get('files') + '</div>' +
-				'<div id="odRecent" class="odCatListTitle">' + mxResources.get('recent') + '</div>' +
-				'<div id="odShared" class="odCatListTitle">' + mxResources.get('shared') + '</div>' +
-				'<div id="odSharepoint" class="odCatListTitle">' + mxResources.get('sharepoint') + '</div>' +
+				'<div id="odFiles" class="odCatListTitle odCatSelected">' + mxUtils.htmlEntities(mxResources.get('files')) + '</div>' +
+				'<div id="odRecent" class="odCatListTitle">' + mxUtils.htmlEntities(mxResources.get('recent')) + '</div>' +
+				'<div id="odShared" class="odCatListTitle">' + mxUtils.htmlEntities(mxResources.get('shared')) + '</div>' +
+				'<div id="odSharepoint" class="odCatListTitle">' + mxUtils.htmlEntities(mxResources.get('sharepoint')) + '</div>' +
 			'</div>' +
 			'<div class="odFilesSec">' +
-				'<div class="searchBar" style="display:none"><input type="search" id="odSearchBox" placeholder="' + mxResources.get('search') + '"></div>' +
+				'<div class="searchBar" style="display:none"><input type="search" id="odSearchBox" placeholder="' + mxUtils.htmlEntities(mxResources.get('search')) + '"></div>' +
 				'<div class="odFilesBreadcrumb"></div>' +
 				'<div id="refreshOD" class="odRefreshButton">' +
-					'<img src="/images/update32.png" width="16" height="16" title="' + mxResources.get('refresh') + 'Refresh" border="0"/>' +
+					'<img class="geAdaptiveAsset" src="/images/update32.png" width="16" height="16" title="' + mxUtils.htmlEntities(mxResources.get('refresh')) + 'Refresh" border="0"/>' +
 				'</div>' +
 				'<div class="odFilesList"></div>' +
 			'</div>' +
 			previewHtml +
-			(backFn? '<div id="odBackBtn" class="odLinkBtn">&lt; ' + mxResources.get('back') + '</div>' : '') +
-			(withSubmitBtn? '<button id="odSubmitBtn" class="odSubmitBtn">' + mxResources.get(foldersOnly? 'save' : 'open') + '</button>' : '');
-			
+			(backFn? '<div id="odBackBtn" class="odLinkBtn">&lt; ' + mxUtils.htmlEntities(mxResources.get('back')) + '</div>' : '') +
+			(withSubmitBtn? '<button id="odSubmitBtn" class="odSubmitBtn">' + mxUtils.htmlEntities(mxResources.get(foldersOnly? 'select' : 'open')) + '</button>' : '');
+	
+	var isDarkMode = window.Editor != null && Editor.isDarkMode != null && Editor.isDarkMode();
+	
 	var css = 
+		'.odCatsList *, .odFilesSec * { user-select: none; }' +
 		'.odCatsList {' +
 		'	box-sizing: border-box;' + 
 		'	position:absolute;' + 
@@ -82,7 +107,6 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		'	width:30%;' + 
 		'	border: 1px solid #CCCCCC;' + 
 		'	border-bottom:none;' + 
-		'	background-color: #FFFFFF;' + 
 		'	display: inline-block;' + 
 		'	overflow-x: hidden;' + 
 		'	overflow-y: auto;' + 
@@ -105,7 +129,6 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		'	border: 1px solid #CCCCCC;' + 
 		'	border-left:none;' + 
 		'	border-bottom:none;' + 
-		'	background-color: #FFFFFF;' + 
 		'	display: inline-block;' + 
 		'	overflow: hidden;' + 
 		'}' + 
@@ -138,10 +161,25 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		'	background-color:#ddd;' + 
 		'	border-radius:50%;' + 
 		'}' + 
-		'.odRefreshButton:active {' + 
-		'	opacity:0.7;' + 
-		'}' + 
-		'.odFilesList {' + 
+		// '.odRefreshButton:hover {' + 
+		// '	background-color:#ddd;' + 
+		// '	border-radius:50%;' + 
+		// '}' + 
+		'.odRefreshButton:active {' +
+		'	opacity:0.7;' +
+		'}' +
+		'.searchBar {' +
+		'	position:absolute;' +
+		'	top:4px;' +
+		'	right:30px;' +
+		'	z-index:1;' +
+		'}' +
+		'.searchBar > input {' +
+		'	box-sizing: border-box;' +
+		'	width: 140px;' +
+		'	font-size: 13px;' +
+		'}' +
+		'.odFilesList {' +
 		'	box-sizing: border-box;' + 
 		'	position:absolute;' + 
 		'	top:32px;' + 
@@ -151,12 +189,18 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		'	overflow-y: auto;' + 
 		'}' + 
 		'.odFileImg {' + 
+		'	width: 24px;' + 
 		'	padding-left: 5px;' + 
 		'	padding-right: 5px;' + 
 		'}' + 
 		'.odFileTitle {' + 
+		'	cursor: default;' + 
 		'	font-weight: normal;' + 
-		'	color: #666666 !important;' + 
+		'	color: #666666 !important;' +
+		'	width: calc(100% - 20px);' +
+	    '	white-space: nowrap;' +
+	    '	overflow: hidden;' +
+    	'	text-overflow: ellipsis;' +
 		'}' + 
 		'.odFileListGrid {' + 
 		'	width: 100%;' + 
@@ -166,10 +210,10 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		'    border-spacing: 0;' + 
 		'}' + 
 		'.odOddRow {' + 
-		'	background-color: #eeeeee;' + 
+		(isDarkMode ? '' : '	background-color: #eeeeee;') + 
 		'}' + 
 		'.odEvenRow {' + 
-		'	background-color: #FFFFFF;' + 
+		(isDarkMode ? '' : '	background-color: #FFFFFF;') + 
 		'}' + 
 		'.odRowSelected {' + 
 		'	background-color: #cadfff;' + 
@@ -177,6 +221,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		'.odCatListTitle {' + 
 		'	box-sizing: border-box;' + 
 		'	height: 17px;' + 
+		'	cursor: default;' + 
 		'	color: #666666;' + 
 		'	font-size: 14px;' + 
 		'	line-height: 17px;' + 
@@ -242,7 +287,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		width: 3, // The line thickness
 		radius: 5, // The radius of the inner circle
 		rotate: 0, // The rotation offset
-		color: '#000', // #rgb or #rrggbb
+		color: 'light-dark(#000000, #C0C0C0)', // #rgb or #rrggbb
 		speed: 1, // Rounds per second
 		trail: 60, // Afterglow percentage
 		shadow: false, // Whether to render a shadow
@@ -284,7 +329,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		var req = new XMLHttpRequest();
 		//TODO find another way to disable caching (adding a parameter breaks the url)
 		req.open('GET', file['@microsoft.graph.downloadUrl']);
-		var isPng = file.file.mimeType == 'image/png';
+		var isPng = file.file? (file.file.mimeType == 'image/png') : false;
 		
 		req.onreadystatechange = function()
 		{
@@ -298,15 +343,24 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 						
 						if (isPng)
 						{
-							cnt = 'data:image/png;base64,' + Editor.base64Encode (cnt);
+							cnt = 'data:image/png;base64,' + Editor.base64Encode(cnt);
 							cnt = Editor.extractGraphModelFromPng(cnt);
 						}
-						
-						var doc = mxUtils.parseXml(cnt);
-	
-						if (editor.extractGraphModel(doc.documentElement) != null)
+						else if (/\.pdf$/.test(file.name))
 						{
-							success(doc);
+							cnt = 'data:application/pdf;base64,' + Editor.base64Encode(cnt);
+							cnt = Editor.extractGraphModelFromPdf(cnt);
+						}
+
+						var doc = mxUtils.parseXml(cnt);
+
+						var node = (doc.documentElement.nodeName == 'mxlibrary') ?
+							doc.documentElement : Editor.extractGraphModel(doc.documentElement);
+
+						if (node != null)
+						{
+							success(node.ownerDocument);
+							
 							return;
 						}
 					}
@@ -317,7 +371,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 			}
 		};
 		
-		if (isPng && req.overrideMimeType)
+		if ((isPng || /\.pdf$/.test(file.name)) && req.overrideMimeType)
 		{
 			req.overrideMimeType('text/plain; charset=x-user-defined');
 		}
@@ -327,6 +381,12 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 
 	function doSubmit()
 	{
+		//handle remote items which is accessed indirectly
+		if (selectedFile != null && selectedFile.remoteItem != null)
+		{
+			selectedFile = selectedFile.remoteItem;
+		}
+
 		function submit(img)
 		{
 			pickedFileCallback(selectedFile, img);	
@@ -357,10 +417,14 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 			return;	
 		}
 		
-		prevDiv.innerHTML = '';
+		prevDiv.style.background = 'transparent';
+		prevDiv.innerText = '';
 		
 		function showRenderMsg(msg)
 		{
+			prevDiv.style.background = 'transparent';
+			prevDiv.innerText = '';	
+
 			var status = document.createElement('div');
 			status.className = 'odPreviewStatus';
 			mxUtils.write(status, msg);
@@ -368,13 +432,11 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 			spinner.stop();
 		};
 		
-		if (file == null || file.folder) 
+		if (file == null || getItemFolder(file) != null || /\.drawiolib$/.test(getItemName(file)))
 		{
 			showRenderMsg(mxResources.get('noPreview'));
 			return;
 		}
-		
-		spinner.spin(prevDiv);
 		
 		try
 		{
@@ -385,18 +447,27 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 			}
 
 			loadingPreviewFile = file;
-			
+			spinner.spin(prevDiv);
+		
 			getDrawioFileDoc(file, function(doc)
 			{
+				spinner.stop();
+
 				if (loadingPreviewFile != file)
 				{
 					return;
 				}
-
-				var diagrams = doc.getElementsByTagName('diagram');
-				curViewer = AspectDialog.prototype.createViewer(prevDiv, diagrams.length == 0? doc.documentElement : diagrams[0]);
-
-				spinner.stop();
+				else if (doc.documentElement.nodeName == 'mxlibrary')
+				{
+					showRenderMsg(mxResources.get('noPreview'));
+				}
+				else
+				{
+					var diagrams = doc.getElementsByTagName('diagram');
+					curViewer = AspectDialog.prototype.createViewer(prevDiv,
+							diagrams.length == 0? doc.documentElement : diagrams[0],
+							null, 'transparent');
+				}
 			}, 
 			function() //If the file is not a draw.io diagram
 			{
@@ -415,7 +486,10 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 	function renderBreadcrumb() 
 	{
 		var bcDiv = _$('.odFilesBreadcrumb');
-		bcDiv.innerHTML = '';
+		
+		if (bcDiv == null) return;
+		
+		bcDiv.innerText = '';
 		
 		for (var i = 0; i < breadcrumb.length - 1; i++)
 		{
@@ -443,7 +517,8 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		{
 			var curr = document.createElement('span');
 			curr.innerHTML = mxUtils.htmlEntities((breadcrumb.length == 1) ?
-					mxResources.get('officeSelDiag') : (breadcrumb[breadcrumb.length - 1].name || mxResources.get('home')));
+					mxResources.get(foldersOnly ? 'selectFolder' : 'officeSelDiag') :
+						(breadcrumb[breadcrumb.length - 1].name || mxResources.get('home')));
 			bcDiv.appendChild(curr);
 		}
 	};
@@ -462,7 +537,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		}
 		else
 		{
-			var isFolder = selectedFile.folder;
+			var isFolder = getItemFolder(selectedFile) != null;
 			selectedFile = selectedFile.remoteItem? selectedFile.remoteItem : selectedFile; //handle remote items which is accessed indirectly
 			var folderDI = (selectedFile.parentReference? selectedFile.parentReference.driveId : null) || selectedDriveId;
 			var id = selectedFile.id;
@@ -486,9 +561,17 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
         _$('.odFilesSec').style.display = 'block';
        // _$('#signOutLnk').style.display = '';
 
+        // Server-side search is only supported for the Sharepoint sites list
+        _$('.searchBar').style.display = driveId == 'sharepoint'? '' : 'none';
+
+        if (driveId != 'sharepoint' || searchTxt == null)
+        {
+        	_$('#odSearchBox').value = '';
+        }
+
 		if (prevDiv != null)
 		{
-			prevDiv.innerHTML = '';
+			prevDiv.innerText = '';
 			prevDiv.style.top = '50%';
 		}
 
@@ -497,7 +580,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		var isSharepointSites = 0;
 		lastFolderArgs = arguments;
 	
-		function renderList(potintialDrawioFiles)
+		function renderList(potentialDrawioFiles)
 		{
 			spinner.stop();
 			
@@ -507,34 +590,24 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 			var count = 0;
 			
 			//TODO support paging
-			for (var i = 0; i < potintialDrawioFiles.length; i++)
+			for (var i = 0; potentialDrawioFiles!= null && i < potentialDrawioFiles.length; i++)
 			{
-				var item = potintialDrawioFiles[i];
+				var item = potentialDrawioFiles[i];
 				
 				if (isSharepointSites == 1 && item.webUrl && !(item.webUrl.indexOf('sharepoint.com/sites/') > 0 || item.webUrl.indexOf('sharepoint.com/') < 0))
 				{
 					continue;
 				}
 				
-				var title = item.displayName || item.name;
+				var title = item.displayName || getItemName(item);
 				var tooltip = mxUtils.htmlEntities(item.description || title);
-				var titleLimit = Math.round(container.clientWidth * 0.7 / 10);
 						
-				if (title != null && title.length > titleLimit)
-				{
-					title = mxUtils.htmlEntities(title.substring(0, titleLimit)) + '&hellip;';
-				}
-				else
-				{
-					title = mxUtils.htmlEntities(title);
-				}
-				
 				if (isSharepointSites)
 				{
-					item.folder = true;
+					item.folder = isSharepointSites == 2? {isRoot: true} : true;
 				}
 				
-				var isFolder = item.folder !=  null;
+				var isFolder = getItemFolder(item) != null;
 				
 				if (foldersOnly && !isFolder)
 				{
@@ -544,20 +617,19 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 				var row = document.createElement('tr');
 				row.className = (count++) % 2? 'odOddRow' : 'odEvenRow';
 				var td = document.createElement('td');
-				td.style.width = "24px";
+				td.style.width = '36px';
 				var typeImg = document.createElement('img');
 				typeImg.src = '/images/'  + (isFolder? 'folder.png' : 'file.png');
 				typeImg.className = 'odFileImg';
-				typeImg.width = 24;
 				td.appendChild(typeImg);
 				
 				row.appendChild(td);
 				td = document.createElement('td');
-				var titleSpan = document.createElement('span');
-				titleSpan.className = "odFileTitle";
-				titleSpan.innerHTML = title;
-				titleSpan.setAttribute('title', tooltip);
-				td.appendChild(titleSpan);
+				var titleDiv = document.createElement('div');
+				titleDiv.className = "odFileTitle";
+				titleDiv.innerHTML = mxUtils.htmlEntities(title);
+				titleDiv.setAttribute('title', tooltip);
+				td.appendChild(titleDiv);
 				row.appendChild(td);
 				grid.appendChild(row);
 				
@@ -567,7 +639,11 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 					currentItem.className += ' odRowSelected';
 					selectedFile = item;
 					selectedDriveId = driveId;
-					previewFn(selectedFile);
+					
+					if (!acceptAllFiles)
+					{
+						previewFn(selectedFile);
+					}
 				}
 				
 				(function(item2, row2)
@@ -584,7 +660,10 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 							selectedFile = item2;
 							selectedDriveId = driveId;
 							
-							previewFn(selectedFile);
+							if (!acceptAllFiles)
+							{
+								previewFn(selectedFile);
+							}
 						}
 					});
 				})(item, row);
@@ -594,7 +673,9 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 			{
 				var emptyMsg = document.createElement('div');
 				emptyMsg.className = 'odEmptyFolder';
-				emptyMsg.innerHTML = mxUtils.htmlEntities(mxResources.get('folderEmpty', null, 'Folder is empty!'));
+				emptyMsg.innerHTML = mxUtils.htmlEntities(isSharepointSites == 1 && searchTxt?
+					mxResources.get('noResultsFor', [searchTxt], 'No results for \'' + searchTxt + '\'') :
+					mxResources.get('folderEmpty'));
 				filesList.appendChild(emptyMsg);
 			}
 			else
@@ -615,7 +696,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		}, 20000); //20 sec timeout
 		
 		var filesList = _$('.odFilesList');
-        filesList.innerHTML = '';
+        filesList.innerText = '';
         spinner.spin(filesList);
         
         var url;
@@ -623,7 +704,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
         switch(driveId)
         {
         	case 'recent':
-        		breadcrumb = [{name: mxResources.get('recent', null, 'Recent'), driveId: driveId}];
+        		breadcrumb = [{name: mxResources.get('recent'), driveId: driveId}];
         		var recentList = getRecentList() || {};
         		var list = [];
         		
@@ -637,11 +718,11 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
         		return;
         	case 'shared':
         		url = '/me/drive/sharedWithMe';
-        		breadcrumb = [{name: mxResources.get('sharedWithMe', null, 'Shared With Me'), driveId: driveId}];
+        		breadcrumb = [{name: mxResources.get('sharedWithMe'), driveId: driveId}];
         		break;
         	case 'sharepoint':
-        		url = '/sites?search=';
-        		breadcrumb = [{name: mxResources.get('sharepointSites', null, 'Sharepoint Sites'), driveId: driveId}];
+        		url = '/sites?search=' + (searchTxt != null? encodeURIComponent(searchTxt) : '');
+        		breadcrumb = [{name: mxResources.get('sharepointSites'), driveId: driveId}];
         		isSharepointSites = 1;
         		break;
         	case 'site':
@@ -653,9 +734,9 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
         		breadcrumb.push({name: folderName, driveId: driveId, folderId: folderId, siteId: siteId});
         		url = '/drives/' + siteId + (folderId? '/items/' + folderId : '/root') + '/children';
         		break;
-        	case 'search': //TODO search doesn't return any results, find out why then remove display: none from the searchBox
+        	case 'search': //TODO file search doesn't return any results, find out why then enable the searchBox for file folders also
         		driveId = selectedDriveId;
-        		breadcrumb = [{driveId: driveId, name: mxResources.get('back', null, 'Back')}];
+        		breadcrumb = [{driveId: driveId, name: mxResources.get('back')}];
         		searchTxt = encodeURIComponent(searchTxt.replace(/\'/g, '\\\''));
         		url = selectedSiteId? '/sites/' + selectedSiteId + '/drive/root/search(q=\'' + searchTxt + '\')' : (driveId? '/drives/' + driveId + '/root/search(q=\'' + searchTxt + '\')' : '/me/drive/root/search(q=\'' + searchTxt + '\')');
         		break;
@@ -677,55 +758,123 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
         	url += (url.indexOf('?') > 0 ? '&' : '?') + 'select=id,name,description,parentReference,file,createdBy,lastModifiedBy,lastModifiedDateTime,size,folder,remoteItem,@microsoft.graph.downloadUrl';
         }
         
-		getODFilesList(url, function(resp) 
-		{
-			if (!acceptRequest) return;
-			clearTimeout(timeoutThread);
-			
-			var list = resp.value;
+		var potentialDrawioFiles = [];
 
-			var potintialDrawioFiles = isSharepointSites? list : [];
-			
-			for (var i = 0; !isSharepointSites && i < list.length; i++)
+		function getChunk(nextUrl)
+		{
+			getODFilesList(nextUrl? nextUrl : url, function(resp) 
 			{
-				var file = list[i];
-				var mimeType = file.file? file.file.mimeType : null;
+				if (!acceptRequest) return;
 				
-				if (file.folder || mimeType == 'text/html' || mimeType == 'text/xml' || mimeType == 'application/xml' || mimeType == 'image/png' 
-					|| /\.svg$/.test(file.name) || /\.html$/.test(file.name) || /\.xml$/.test(file.name) || /\.png$/.test(file.name)
-					|| /\.drawio$/.test(file.name))
-				{
-					potintialDrawioFiles.push(file);
-				}
-			}
-			
-			renderList(potintialDrawioFiles);
-		}, 
-		function(err)
-		{
-			if (!acceptRequest) return;
-			clearTimeout(timeoutThread);
-			
-			var errMsg = null;
-			
-			try
-			{
-				errMsg = JSON.parse(err.responseText).error.message;
-			}
-			catch(e){} //ignore errors
-			
-			errorFn(mxResources.get('errorFetchingFolder', null, 'Error fetching folder items') +
-				(errMsg != null? ' (' + errMsg + ')' : ''));
+				var list = resp.value || [];
 
-			requestInProgress = false;
-			spinner.stop();
-		});
+				if (acceptAllFiles || isSharepointSites)
+				{
+					Array.prototype.push.apply(potentialDrawioFiles, list);
+
+					// Sorts SharePoint sites and site drives by displayed name
+					if (isSharepointSites)
+					{
+						potentialDrawioFiles.sort(function(a, b)
+						{
+							var nameA = (a.displayName || getItemName(a) || '').toLowerCase();
+							var nameB = (b.displayName || getItemName(b) || '').toLowerCase();
+
+							return (nameA < nameB) ? -1 : ((nameA > nameB) ? 1 : 0);
+						});
+					}
+				}
+				else
+				{
+					for (var i = 0; i < list.length; i++)
+					{
+						var file = list[i];
+						var fileFacet = getItemFile(file);
+						var mimeType = fileFacet != null? fileFacet.mimeType : null;
+						var fileName = getItemName(file);
+						
+						if (getItemFolder(file) != null || mimeType == 'text/html' || mimeType == 'text/xml' || mimeType == 'application/xml' || mimeType == 'image/png'
+							|| /\.svg$/.test(fileName) || /\.html$/.test(fileName) || /\.xml$/.test(fileName) || /\.png$/.test(fileName)
+							|| /\.drawio$/.test(fileName) || /\.drawiolib$/.test(fileName) || /\.pdf$/.test(fileName))
+						{
+							potentialDrawioFiles.push(file);
+						}
+					}
+
+					// Sorts entries by type and name
+					potentialDrawioFiles.sort(function(a, b)
+					{
+						var nameA = (getItemName(a) || '').toLowerCase();
+						var nameB = (getItemName(b) || '').toLowerCase();
+						var isFolderA = getItemFolder(a) != null;
+						var isFolderB = getItemFolder(b) != null;
+
+						if (isFolderA && !isFolderB)
+						{
+							return -1;
+						}
+						else if (!isFolderA && isFolderB)
+						{
+							return 1;
+						}
+						else
+						{
+							if (nameA < nameB)
+							{
+								return -1;
+							}
+							else if (nameA > nameB)
+							{
+								return 1;
+							}
+							else
+							{
+								return 0;
+							}
+						}
+					});
+				}
+
+				if (resp['@odata.nextLink'] && potentialDrawioFiles.length < 1000) // TODO Support dynamic paging instead of 1000 limit
+				{
+					getChunk(resp['@odata.nextLink']);
+				}
+				else
+				{
+					clearTimeout(timeoutThread);
+					renderList(potentialDrawioFiles);
+				}
+			}, 
+			function(err)
+			{
+				if (!acceptRequest) return;
+				clearTimeout(timeoutThread);
+				
+				var errMsg = null;
+				
+				try
+				{
+					errMsg = JSON.parse(err.responseText).error.message;
+				}
+				catch(e){} //ignore errors
+				
+				errorFn(mxResources.get('errorFetchingFolder') +
+					(errMsg != null? ' (' + errMsg + ')' : ''));
+
+				requestInProgress = false;
+				spinner.stop();
+			}, nextUrl != null);
+		};
+
+		getChunk();
 	};
 	
 	this.getSelectedItem = function()
 	{
 		if (selectedFile != null)
 		{
+			//handle remote items which is accessed indirectly
+			selectedFile = selectedFile.remoteItem? selectedFile.remoteItem : selectedFile;
 			addToRecent(selectedFile);	
 		}
 		
@@ -762,6 +911,9 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 	{
 		cats[i].addEventListener('click', function()
 		{
+			loadingPreviewFile = null;
+			selectedFile = null;
+
 			if (requestInProgress) return;
 			
 			setSelectedCat(this);
@@ -784,36 +936,63 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		});
 	}
 	
-	//Search (Currently API doesn't work)
+	//Search is only enabled for the Sharepoint sites list (file search API doesn't work)
 	var delayTimer = null;
-	
+
 	function doSearch(searchStr)
 	{
-		if (requestInProgress) return;
 		delayTimer = null;
-		fillFolderFiles('search', null, null, null, searchStr)
+
+		// Stops a pending search if the picker was closed in the meantime, as
+		// the elements below are looked up in the document (see _$)
+		if (lastFolderArgs == null || lastFolderArgs[0] != 'sharepoint' ||
+			!document.body.contains(container))
+		{
+			return;
+		}
+
+		if (requestInProgress)
+		{
+			//Retry until the current request is finished
+			delayTimer = setTimeout(function()
+			{
+				doSearch(searchStr);
+			}, 500);
+		}
+		else
+		{
+			fillFolderFiles('sharepoint', null, null, null, searchStr);
+		}
 	};
-	
-	//Use keyup to detect delete and backspace
-	_$('#odSearchBox').addEventListener('keyup', function(evt)
+
+	var searchBox = _$('#odSearchBox');
+
+	//Input event also fires when the search input is cleared
+	searchBox.addEventListener('input', function()
 	{
-		var searchInput = this;
-		
+		var searchStr = this.value;
+
 		if (delayTimer != null)
 		{
 			clearTimeout(delayTimer);
 		}
-		
+
+		delayTimer = setTimeout(function()
+		{
+			doSearch(searchStr);
+		}, 500);
+	});
+
+	searchBox.addEventListener('keyup', function(evt)
+	{
 		if (evt.keyCode == 13)
 		{
-			doSearch(searchInput.value);
-		}
-		else
-		{
-			delayTimer = setTimeout(function()
+			if (delayTimer != null)
 			{
-				doSearch(searchInput.value);	
-			}, 500);
+				clearTimeout(delayTimer);
+			}
+
+			doSearch(this.value);
 		}
 	});
 	
@@ -822,7 +1001,10 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		if (lastFolderArgs != null)
 		{
 			previewFn(null);
+			
+			var temp = breadcrumb.slice();
 			fillFolderFiles.apply(this, lastFolderArgs);
+			breadcrumb = temp;
 		}
 	};
 	
@@ -837,11 +1019,6 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 	{
 		_$('#odSubmitBtn').addEventListener('click', doSubmit);
 	}
-	
-	document.body.onselectstart = function()
-	{
-		return false;
-	};
 	
 	if (initFolderPath != null)
 	{

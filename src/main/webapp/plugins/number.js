@@ -1,7 +1,22 @@
 /**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
+/**
  * Sample plugin.
  */
 Draw.loadPlugin(function(ui) {
+
+	// Adds numbered toggle property
+	Editor.commonVertexProperties.push({name: 'numbered', dispName: 'Numbered', type: 'bool', defVal: true, isVisible: function(state, format)
+	{
+		var graph = format.editorUi.editor.graph;
+
+		return graph.view.redrawNumberShape != null;
+	}, onChange: function(graph, newValue)
+	{
+		graph.refresh();
+	}});
 
 	var graph = ui.editor.graph;
 	var enabled = true;
@@ -101,7 +116,7 @@ Draw.loadPlugin(function(ui) {
     action.setToggleAction(true);
 	action.setSelectedCallback(function() { return enabled; });
     
-	var menu = ui.menus.get('view');
+	var menu = ui.menus.get((urlParams['sketch'] == '1') ? 'extras' : 'view');
 	var oldFunct = menu.funct;
 	
 	menu.funct = function(menu, parent)

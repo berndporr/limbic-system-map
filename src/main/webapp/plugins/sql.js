@@ -1,4 +1,8 @@
 /**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
+/**
  * Parse SQL CREATE TABLE. Simple initial version for community to improve.
  */
 Draw.loadPlugin(function(ui) {
@@ -412,18 +416,18 @@ Draw.loadPlugin(function(ui) {
                     }
 
                     if (MODE_SQLSERVER) {
-                        if (name.indexOf("ASC") !== -1 ||
-                            name.indexOf("DESC") !== -1 ||
-                            name.indexOf("EXEC") !== -1 ||
-                            name.indexOf("WITH") !== -1 ||
-                            name.indexOf("ON") !== -1 ||
-                            name.indexOf("ALTER") !== -1 ||
+                        if (name.indexOf(" ASC") !== -1 ||
+                            name.indexOf(" DESC") !== -1 ||
+                            name.indexOf(" EXEC") !== -1 ||
+                            name.indexOf(" WITH") !== -1 ||
+                            name.indexOf(" ON") !== -1 ||
+                            name.indexOf(" ALTER") !== -1 ||
                             name.indexOf("/*") !== -1 ||
-                            name.indexOf("CONSTRAIN") !== -1 ||
-                            name.indexOf("SET") !== -1 ||
-                            name.indexOf("NONCLUSTERED") !== -1 ||
-                            name.indexOf("GO") !== -1 ||
-                            name.indexOf("REFERENCES") !== -1) {
+                            name.indexOf(" CONSTRAIN") !== -1 ||
+                            name.indexOf(" SET") !== -1 ||
+                            name.indexOf(" NONCLUSTERED") !== -1 ||
+                            name.indexOf(" GO") !== -1 ||
+                            name.indexOf(" REFERENCES") !== -1) {
                             continue;
                         }
                         //Get delimiter of column name
@@ -552,7 +556,7 @@ Draw.loadPlugin(function(ui) {
 
             //Create Table
             tableCell = new mxCell(tableModel.Name, new mxGeometry(dx, 0, maxNameLenght, 26),
-                'swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;swimlaneFillColor=#ffffff;align=center;');
+                'swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=default;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;swimlaneFillColor=default;align=center;');
             tableCell.vertex = true;
 
             //Resize row
@@ -580,7 +584,7 @@ Draw.loadPlugin(function(ui) {
             var graph = ui.editor.graph;
             var view = graph.view;
             var bds = graph.getGraphBounds();
-
+            
             // Computes unscaled, untranslated graph bounds
             var x = Math.ceil(Math.max(0, bds.x / view.scale - view.translate.x) + 4 * graph.gridSize);
             var y = Math.ceil(Math.max(0, (bds.y + bds.height) / view.scale - view.translate.y) + 4 * graph.gridSize);
@@ -594,7 +598,8 @@ Draw.loadPlugin(function(ui) {
 
     mxUtils.br(div);
 
-    var resetBtn = mxUtils.button(mxResources.get('reset'), function() {
+    var resetBtn = mxUtils.button(mxResources.get('reset'), function()
+    {
         sqlInput.value = '';
     });
 
@@ -603,16 +608,32 @@ Draw.loadPlugin(function(ui) {
     resetBtn.style.padding = '4px';
     div.appendChild(resetBtn);
 
-    var btn = mxUtils.button('Insert MySQL', function() {
-        parseSql(sqlInput.value);
+    var btn = mxUtils.button('Insert MySQL', function()
+    {
+        try
+        {
+            parseSql(sqlInput.value);
+        }
+        catch (e)
+        {
+            ui.handleError(e);
+        }
     });
 
     btn.style.marginTop = '8px';
     btn.style.padding = '4px';
     div.appendChild(btn);
 
-    var btn = mxUtils.button('Insert SQL Server', function() {
-        parseSql(sqlInput.value, 'sqlserver');
+    var btn = mxUtils.button('Insert SQL Server', function()
+    {
+        try
+        {
+            parseSql(sqlInput.value, 'sqlserver');
+        }
+        catch (e)
+        {
+            ui.handleError(e);
+        }
     });
 
     btn.style.marginTop = '8px';

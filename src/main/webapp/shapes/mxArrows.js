@@ -1,6 +1,5 @@
 /**
- * $Id: mxArrows.js,v 1.5 2016/03/23 12:32:06 mate Exp $
- * Copyright (c) 2006-2016, JGraph Ltd
+ * Copyright (c) 2006-2016, JGraph Holdings Ltd
  */
 
 //**********************************************************************************************************************************************************
@@ -31,7 +30,8 @@ mxShapeArrows2Arrow.prototype.customProperties = [
 	{name: 'dy', dispName: 'Arrow Width', type: 'float', min:0, max:1, defVal: 0.6},
 	{name: 'notch', dispName: 'Notch', type: 'float', min:0, defVal: 0},
 	{name: 'headCrossline', dispName: 'Head Crossline', type: 'bool', defVal: false},
-	{name: 'tailCrossline', dispName: 'Tail Crossline', type: 'bool', defVal: false}
+	{name: 'tailCrossline', dispName: 'Tail Crossline', type: 'bool', defVal: false},
+	{name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 ];
 
 mxShapeArrows2Arrow.prototype.cst = {
@@ -224,7 +224,8 @@ mxShapeArrows2TwoWayArrow.prototype.cst = {
 
 mxShapeArrows2TwoWayArrow.prototype.customProperties = [
 	{name: 'dx', dispName: 'Arrowhead Length', type: 'float', min:0, defVal: 35},
-	{name: 'dy', dispName: 'Arrow Width', type: 'float', min:0, max:1, defVal: 0.6}
+	{name: 'dy', dispName: 'Arrow Width', type: 'float', min:0, max:1, defVal: 0.6},
+	{name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 ];
 
 /**
@@ -2017,6 +2018,10 @@ function mxShapeArrows2TailedArrow(bounds, fill, stroke, strokewidth)
 	this.strokewidth = (strokewidth != null) ? strokewidth : 1;
 	this.dy = 0.5;
 	this.dx = 0.5;
+	this.dx1 = 20;
+	this.dy1 = 10;
+	this.dx2 = 25;
+	this.dy2 = 30;
 	this.notch = 0;
 	this.arrowHead = 0;
 };
@@ -2187,6 +2192,10 @@ function mxShapeArrows2TailedNotchedArrow(bounds, fill, stroke, strokewidth)
 	this.strokewidth = (strokewidth != null) ? strokewidth : 1;
 	this.dy = 0.5;
 	this.dx = 0.5;
+	this.dx1 = 20;
+	this.dy1 = 10;
+	this.dx2 = 25;
+	this.dy2 = 30;
 	this.notch = 0;
 	this.arrowHead = 0;
 };
@@ -2587,6 +2596,7 @@ function mxShapeArrows2UTurnArrow(bounds, fill, stroke, strokewidth)
 	this.strokewidth = (strokewidth != null) ? strokewidth : 1;
 	this.dy = 0.5;
 	this.dx = 0.5;
+	this.dx2 = 25;
 	this.arrowHead = 40;
 };
 
@@ -2710,3 +2720,174 @@ mxShapeArrows2UTurnArrow.prototype.getConstraints = function(style, w, h)
 	
 	return (constr);
 };
+
+//**********************************************************************************************************************************************************
+//Wedge Arrow
+//**********************************************************************************************************************************************************
+function mxShapeArrowsWedgeArrow()
+{
+	mxArrow.call(this);
+};
+
+mxUtils.extend(mxShapeArrowsWedgeArrow, mxArrow);
+
+mxShapeArrowsWedgeArrow.prototype.useSvgBoundingBox = true;
+
+mxShapeArrowsWedgeArrow.prototype.customProperties = [
+	{name: 'startWidth', dispName: 'Wedge Width', type: 'float', min:0, defVal:25}
+];
+
+mxShapeArrowsWedgeArrow.prototype.paintEdgeShape = function(c, pts)
+{
+	var sw = Math.max(0, parseFloat(mxUtils.getValue(this.style, 'startWidth', 20)));
+
+	// Base vector (between end points)
+	var p0 = pts[0];
+	var pe = pts[pts.length - 1];
+
+	var dx = pe.x - p0.x;
+	var dy = pe.y - p0.y;
+	var dist = Math.sqrt(dx * dx + dy * dy);	
+	var nx = dx * sw / dist;
+	var ny = dy * sw / dist;
+
+	c.begin();
+	c.moveTo(p0.x + ny, p0.y - nx);
+	c.lineTo(p0.x - ny, p0.y + nx);
+	c.lineTo(pe.x, pe.y);
+	c.close();
+	c.fillAndStroke();
+};
+
+mxCellRenderer.registerShape('mxgraph.arrows2.wedgeArrow', mxShapeArrowsWedgeArrow);
+
+//**********************************************************************************************************************************************************
+//Wedge Arrow Dashed
+//**********************************************************************************************************************************************************
+function mxShapeArrowsWedgeArrowDashed()
+{
+	mxArrowConnector.call(this);
+};
+
+mxUtils.extend(mxShapeArrowsWedgeArrowDashed, mxArrow);
+
+mxShapeArrowsWedgeArrowDashed.prototype.useSvgBoundingBox = true;
+
+mxShapeArrowsWedgeArrowDashed.prototype.customProperties = [
+	{name: 'startWidth', dispName: 'Wedge Width', type: 'float', min:0, defVal:25}
+];
+
+mxShapeArrowsWedgeArrowDashed.prototype.paintEdgeShape = function(c, pts)
+{
+	var startWidth = Math.max(0, parseFloat(mxUtils.getValue(this.style, 'startWidth', 20)));
+	var steps = 8;
+	// Base vector (between end points)
+	var p0 = pts[0];
+	var pe = pts[pts.length - 1];
+
+	var dx = pe.x - p0.x;
+	var dy = pe.y - p0.y;
+	var dist = Math.sqrt(dx * dx + dy * dy);	
+	var nx = dx * startWidth / dist;
+	var ny = dy * startWidth / dist;
+	var cnx = nx; // current nx
+	var cny = ny; // current ny
+	var pcx = p0.x; // current x on edge
+	var pcy = p0.y; // current y on edge
+
+	c.begin();
+	
+ 	for (var i = 0; i <= steps; i++)
+	{
+		cnx = nx * (steps - i) / steps;
+		cny = ny * (steps - i) / steps;
+
+		if (i == steps)
+		{
+			cnx = nx * (steps - i * 0.98) / steps;
+			cny = ny * (steps - i * 0.98) / steps;
+		}
+		
+		var px1 = pcx + cny;
+		var py1 = pcy - cnx;
+		var px2 = pcx - cny;
+		var py2 = pcy + cnx;
+			
+		c.moveTo(px1, py1);
+		c.lineTo(px2, py2);
+		
+		pcx = pcx + dx / steps;
+		pcy = pcy + dy / steps;
+	} 
+	
+	c.stroke();
+};
+
+mxCellRenderer.registerShape('mxgraph.arrows2.wedgeArrowDashed', mxShapeArrowsWedgeArrowDashed);
+
+//**********************************************************************************************************************************************************
+//Wedge Arrow Dashed v2
+//**********************************************************************************************************************************************************
+function mxShapeArrowsWedgeArrowDashed2()
+{
+	mxArrowConnector.call(this);
+};
+
+mxUtils.extend(mxShapeArrowsWedgeArrowDashed2, mxArrow);
+
+mxShapeArrowsWedgeArrowDashed2.prototype.useSvgBoundingBox = true;
+
+mxShapeArrowsWedgeArrowDashed2.prototype.customProperties = [
+	{name: 'startWidth', dispName: 'Wedge Width', type: 'float', min:0, defVal:25},
+	{name: 'stepSize', dispName: 'Step Size', type: 'float', min:0, defVal:25}
+];
+
+mxShapeArrowsWedgeArrowDashed2.prototype.paintEdgeShape = function(c, pts)
+{
+	var startWidth = Math.max(0, parseFloat(mxUtils.getValue(this.style, 'startWidth', 20)));
+	var stepSize = Math.max(0, parseFloat(mxUtils.getValue(this.style, 'stepSize', 10)));
+
+	// Base vector (between end points)
+	var p0 = pts[0];
+	var pe = pts[pts.length - 1];
+
+	var dx = pe.x - p0.x;
+	var dy = pe.y - p0.y;
+	var dist = Math.sqrt(dx * dx + dy * dy);	
+	var nx = dx * startWidth / dist;
+	var ny = dy * startWidth / dist;
+	var cnx = nx; // current nx
+	var cny = ny; // current ny
+	var pcx = p0.x; // current x on edge
+	var pcy = p0.y; // current y on edge
+	var steps = (stepSize > 0) ? Math.floor(dist / stepSize) : 0;
+
+	c.begin();
+	
+ 	for (var i = 0; i <= steps; i++)
+	{
+		cnx = nx * (steps - i) / steps;
+		cny = ny * (steps - i) / steps;
+
+		if (i == steps)
+		{
+			cnx = nx * (steps - i * 0.98) / steps;
+			cny = ny * (steps - i * 0.98) / steps;
+		}
+		
+		var px1 = pcx + cny;
+		var py1 = pcy - cnx;
+		var px2 = pcx - cny;
+		var py2 = pcy + cnx;
+			
+		c.moveTo(px1, py1);
+		c.lineTo(px2, py2);
+		
+		pcx = pcx + dx / steps;
+		pcy = pcy + dy / steps;
+	} 
+	
+	c.stroke();
+};
+
+mxCellRenderer.registerShape('mxgraph.arrows2.wedgeArrowDashed2', mxShapeArrowsWedgeArrowDashed2);

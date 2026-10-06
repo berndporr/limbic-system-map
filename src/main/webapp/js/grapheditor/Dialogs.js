@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2012, JGraph Ltd
+ * Copyright (c) 2006-2012, JGraph Holdings Ltd
  */
 /**
  * Constructs a new open dialog.
@@ -12,6 +12,7 @@ var OpenDialog = function()
 	iframe.style.borderStyle = 'none';
 	iframe.style.borderWidth = '0px';
 	iframe.style.overflow = 'hidden';
+	iframe.style.maxWidth = '100%';
 	iframe.frameBorder = '0';
 	
 	var dx = 0;
@@ -23,84 +24,1030 @@ var OpenDialog = function()
 };
 
 /**
- * Constructs a new color dialog.
+ * 
  */
-var ColorDialog = function(editorUi, color, apply, cancelFn)
+var ColorPicker = function()
 {
-	this.editorUi = editorUi;
+	mxEventSource.call(this);
+
+	var div = document.createElement('div');
+
+	var x0 = 6;
+	var y0 = 4;
+
+	div.style.overflow = 'visible';
+	div.style.position = 'relative';
+	div.style.top = '0px';
+	div.style.left = '0px';
+	div.style.width = '230px';
+	div.style.height = '114px';
+
+	var colorPanel = document.createElement('div');
+
+	colorPanel.style.border = '1px solid light-dark(black, white)';
+	colorPanel.style.backgroundImage = 'url(' + this.hsImage + ')';
+	colorPanel.style.position = 'absolute';
+	colorPanel.style.overflow = 'hidden';
+	colorPanel.style.cursor = 'crosshair';
+	colorPanel.style.width = '181px';
+	colorPanel.style.height = '101px';
+	colorPanel.style.left = x0 + 'px';
+	colorPanel.style.top = y0 + 'px';
+
+	var cross = document.createElement('div');
+	cross.style.background = 'url(' + this.crossImage + ')';
+	cross.style.pointerEvents = 'none';
+	cross.style.position = 'absolute';
+	cross.style.width = '15px';
+	cross.style.height = '15px';
+	cross.style.left = '-8px';
+	cross.style.top = '-8px';
+
+	var currentHsv = [0, 0, 1];
+	var currentAlpha = 1;
 	
-	var input = document.createElement('input');
-	input.style.marginBottom = '10px';
-	input.style.width = '216px';
-	
-	// Required for picker to render in IE
-	if (mxClient.IS_IE)
+	function hsv2rgb(h, s, v)
 	{
-		input.style.marginTop = '10px';
-		document.body.appendChild(input);
-	}
-	
-	var applyFunction = (apply != null) ? apply : this.createApplyFunction();
-	
-	function doApply()
-	{
-		var color = input.value;
-		
-		// Blocks any non-alphabetic chars in colors
-		if (/(^#?[a-zA-Z0-9]*$)/.test(color))
+		if (h == null)
 		{
-			if (color != 'none' && color.charAt(0) != '#')
+			return [v, v, v];
+		}
+
+		var i = Math.floor(h);
+		var f = i % 2 ? h - i : 1 - (h - i);
+		var m = v * (1 - s);
+		var n = v * (1 - s * f);
+
+		switch(i)
+		{
+			case 6:
+			case 0: return [v, n, m];
+			case 1: return [n, v, m];
+			case 2: return [m, v, n];
+			case 3: return [m, n, v];
+			case 4: return [n, m, v];
+			case 5: return [v, m, n];
+		}
+	};
+
+	function rgb2hsv(r, g, b)
+	{
+		var n = Math.min(Math.min(r, g), b);
+		var v = Math.max(Math.max(r, g), b);
+		var m = v - n;
+
+		if (m === 0)
+		{
+			return [null, 0, v];
+		}
+
+		var h = r === n ? 3 + (b - g) / m :
+			(g === n ? 5 + (r - b) / m :
+				1 + (g - r) / m);
+		
+		return [h === 6 ? 0 : h, m / v, v];
+	};
+
+	function fromHSV(h, s, v)
+	{
+		h < 0 && (h = 0) || h > 6 && (h = 6);
+		s < 0 && (s = 0) || s > 1 && (s = 1);
+		v < 0 && (v = 0) || v > 1 && (v = 1);
+
+		return hsv2rgb(
+			h == null ? currentHsv[0] : (currentHsv[0] = h),
+			s == null ? currentHsv[1] : (currentHsv[1] = s),
+			v == null ? currentHsv[2] : (currentHsv[2] = v)
+		);
+	};
+
+	colorPanel.appendChild(cross);
+	div.appendChild(colorPanel);
+
+	sliderBox = document.createElement('div');
+	sliderBox.style.position = 'absolute';
+	sliderBox.style.cursor = 'pointer';
+	sliderBox.style.width = '38px';
+	sliderBox.style.height = '110px';
+	sliderBox.style.left = (193 + x0) + 'px';
+	sliderBox.style.top = y0 + 'px';
+
+	var sliderPanel = document.createElement('div');
+	sliderPanel.style.border = '1px solid light-dark(black, white)';
+	sliderPanel.style.pointerEvents = 'none';
+	sliderPanel.style.overflow = 'hidden';
+	sliderPanel.style.position = 'absolute';
+	sliderPanel.style.width = '16px';
+	sliderPanel.style.height = '101px';
+	sliderPanel.style.left = '9px';
+	sliderPanel.style.top = '0px';
+
+	var panelActive = false;
+	var sliderActive = false;
+
+	var update = mxUtils.bind(this, function(quiet)
+	{
+		var x = Math.round((currentHsv[0] / 6) * 180);
+		var y = Math.round((1 - currentHsv[1]) * 100);
+
+		cross.style.left = (x - 8) + 'px';
+		cross.style.top = (y - 8) + 'px';
+
+		var seg = sliderPanel.childNodes;
+		var arr = hsv2rgb(currentHsv[0], currentHsv[1], 1);
+		
+		if (arr != null)
+		{
+			for (var i = 0; i < seg.length; i++)
 			{
-				color = '#' + color;
+				seg[i].style.backgroundColor = 'rgb('+
+					(arr[0] * (1 - i / seg.length)) * 255 + ', ' +
+					(arr[1] * (1 - i / seg.length)) * 255 + ', ' +
+					(arr[2] * (1 - i / seg.length)) * 255 + ')';
 			}
 
-			ColorDialog.addRecentColor((color != 'none') ? color.substring(1) : color, 12);
-			applyFunction(color);
-			editorUi.hideDialog();
+			var arrowY = Math.round((1 - currentHsv[2]) * 100);
+			arrow.style.top = (arrowY - 4) + 'px';
+
+			var rgb = hsv2rgb(currentHsv[0], currentHsv[1], currentHsv[2]);
+			var color = '#' +
+				('0' + Math.round(rgb[0] * 255).toString(16)).slice(-2) +
+				('0' + Math.round(rgb[1] * 255).toString(16)).slice(-2) +
+				('0' + Math.round(rgb[2] * 255).toString(16)).slice(-2) +
+				(currentAlpha < 1 ?
+					('0' + Math.round(currentAlpha * 255).toString(16)).slice(-2) : '');
+
+			if (quiet != true)
+			{
+				this.fireEvent(new mxEventObject('change',
+					'color', mxUtils.rgba2hex(color)));
+			}
+		}
+	});
+
+	var panelMouseDown = mxUtils.bind(this, function(e)
+	{
+		if (currentHsv[2] == 0)
+		{
+			currentHsv[2] = 1;
+		}
+		
+		panelActive = true;
+		mouseMove(e);
+	});
+
+	var sliderMouseDown = mxUtils.bind(this, function(e)
+	{
+		sliderActive = true;
+		mouseMove(e);
+	});
+
+	var mouseMove = mxUtils.bind(this, function(e)
+	{
+		if (panelActive)
+		{
+			var bounds = colorPanel.getBoundingClientRect();
+			var x = mxEvent.getClientX(e) - bounds.left;
+			var y = mxEvent.getClientY(e) - bounds.top;
+
+			cross.style.left = (x - 8) + 'px';
+			cross.style.top = (y - 8) + 'px';
+
+			var temp = fromHSV(x * (6 / 180), 1 - y / 100);
+
+			this.fromString('#' +
+				('0' + Math.floor(temp[0] * 255).toString(16)).slice(-2) +
+				('0' + Math.floor(temp[1] * 255).toString(16)).slice(-2) +
+				('0' + Math.floor(temp[2] * 255).toString(16)).slice(-2) +
+				(currentAlpha < 1 ?
+					('0' + Math.round(currentAlpha * 255).toString(16)).slice(-2) : ''));
+		}
+		else if (sliderActive)
+		{
+			var bounds = sliderBox.getBoundingClientRect();
+			var y = mxEvent.getClientY(e) - bounds.top;
+			currentHsv[2] = Math.max(Math.min(1, 1 - y / 100), 0);
+			update();
+		}
+	});
+
+	var mouseUp = mxUtils.bind(this, function()
+	{
+		var wasActive = panelActive || sliderActive;
+		sliderActive = false;
+		panelActive = false;
+
+		if (wasActive)
+		{
+			this.fireEvent(new mxEventObject('release'));
+		}
+	});
+
+	mxEvent.addGestureListeners(colorPanel, panelMouseDown);
+	mxEvent.addGestureListeners(sliderBox, sliderMouseDown);
+	mxEvent.addGestureListeners(div, null, mouseMove, mouseUp);
+	mxEvent.addListener(div, 'mouseleave', mouseUp);
+
+	var tileHeight = 4;
+
+	for(var i = 0; i < 101; i += tileHeight)
+	{
+		var seg = document.createElement('div');
+		seg.style.height = tileHeight + 'px';
+		seg.style.pointerEvents = 'none';
+		sliderPanel.appendChild(seg);
+	}
+
+	div.appendChild(sliderPanel);
+
+	var arrow = document.createElement('div');
+	arrow.style.background = 'url(' + this.arrowImage + ')';
+	arrow.style.position = 'absolute';
+	arrow.style.pointerEvents = 'none';
+	arrow.style.width = '7px';
+	arrow.style.height = '11px';
+	arrow.style.left = '2px';
+	arrow.style.top = '-3px';
+
+	sliderBox.appendChild(arrow);
+	sliderBox.appendChild(sliderPanel);
+	div.appendChild(sliderBox);
+
+	this.fromString = function(color, quiet)
+	{
+		quiet = (quiet != null) ? quiet : false;
+
+		if (color == null || color == '' ||
+			mxUtils.isVarColor(color) ||
+			color == mxConstants.NONE)
+		{
+			color = '#ffffff';
+			quiet = true;
+		}
+		
+		var rgb = mxUtils.parseColor(color);
+		var hsv = rgb2hsv(rgb.r / 255, rgb.g / 255, rgb.b / 255);
+
+		if (hsv[0] != null)
+		{
+			currentHsv[0] = hsv[0];
+		}
+		
+		if (hsv[2] != 0)
+		{
+			currentHsv[1] = hsv[1];
+		}
+
+		currentHsv[2] = hsv[2];
+		currentAlpha = rgb.a;
+		update(quiet);
+	};
+
+	this.fromString('#ffffff');
+	this.div = div;
+};
+
+// Extends mxEventSource
+mxUtils.extend(ColorPicker, mxEventSource);
+
+/**
+ * Contains the HS image.
+ */
+ColorPicker.prototype.hsImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALUAAABlCAIAAACEDzXRAAAKQ0lEQVR42u2d23IjKwxFBeRh5v8/9uQlzXlI2gGELoCEm6pxubp6PI69WoV3C20uIQPAH4A/AH/p41/pDcTxP4BPGDtq3vYJGPpv8craeRdo/fyTI8ZhHnodOGgcV/3rnx8QI0SABO2xfAbiCfVR8Wj+CD8jenbRJNyGOxLoAaH1iLu4EUEHAv1+MsQ4zLE4AiIOcpibv4u9OET6+cP4ASnJ1JH4/G60A9km+GbBxLlpKAkADoR2JnaBrvWD/x1GCZn9EYLEHqVfI6Efx0D7E9tDF/rBSJ54l8FqTUse0J+EvxPrdK0fD4aOLXQi7zyGxMaRvvWjjH2U8o9I44OKnf+wyCpHoR/Phk6d/COq8481YrNI3/qR2B+kMl1Fl6J8o/JrU/GEA6HdiB2ha/0YBVx7rFwNHAj9JuIl6EI/qKyJug4Yvg7xA0QEpB8nQe8itoQu9EOT8M3mTsqUSUzykH6cBO1PbA9d91+ShDzV9xrtcgW21IT6L0yfcS90FKCdw+wS6Q9ISWjVfLTVVT2mdiPGGRduFKWm7dBStWlLmI0j/QExdgp7gT5qCu2BLKiLqtc94hI7PB8auQP4KuyIvSJ960fUqXWcd2F48Khr1bHSj2dDp/afmg7tMrFxpG/9mHMFuqrH3spFw0s0Bgr9OAzamdgFutaPpMuqo6WVEXWJdSL14xhof2J76MKfS2yXWGOVB1WXXGOVdxFSx587CXoLsTE0689RH7VW4RMLeKI9wPpzz4XeS2wDzdbXR52AWStjwiSAA6HdiB2h1f6cqT0whzzuzz0LejuxATTy90Xt40v7CzdGRvKS4O/zQ0AiXaRW5x/dv4vS4A/a308LYR5pFquRRvlHIrKWoCj5woCVId4eR/KPNDjURg2tdEC7rSQN5B9DYR70X5YivVxft7AyrOvrD4V2JnaBJurr+qpemLEywlRhT6qvPx16C7ExdK0fSjcj0maAzsqgBt7rfIxGP46B9iT2gi70I842bNj0U4wd/WAG/L5VP3p0W4iNoYv6Oh6eoJmSMW5laIzF8iT1TtgeV9RZoZ7QvdEUzsQu0CP+HOMKDFoZvDFg6s89CNqf2B5a4e8Hts84W0pgeohBtspBXYp8H3Tk/H23MBtHuvbn5mp7dlU9TUkP+XNJMabzHdCIbnuYDSItzZ+bdgUWrAwNPhwInRxw1/wXuYGj+4vo7flboRpjEQ6EjgojYK9/K04NFfNTauEBypXQWQLAfqQoHl9CfvpQ6C3ExtC9/q2YW2u6X1JWzfsYFPKX3L99LrQ/sT10XR+jKh+UN2AxlDOyXfLQaxxf/fkvT4d2JnaBZv258M6h4IFu2Em7/sezoLcQG0Mjfy6xrqLnVBLGWHw1i69WP5LCCn0TNEL3DLNXpCV/n5oo5jAVLY5Em6i8Pwm6uSNuCrNxpNX+nDira20qqyZriv384xhoZ2IX6Lr/wg8eiwpXYGQqPEgjsBrX+er3X46B9ie2h6bX/4i6IfcLS2mIY++7TfoCuLj6hwgN89CwBJ3Gx8rOVsn0kQ48tDS/4X1L8SzMb3BbkGdtwsD05AbP9YOU8xui+uljZei/P/3qx2HQbsSO0Ar/lveHLZYCVK4GeN1P5N+eAb2R2Aya9ueUY+8dlhLtdhWvgfEfz4AeGf9hR2wcaeTPpacvRdzLTx8J/Qq1Ij995PrJ3/mp0p8LO5YyF0s215g/9yxoZ2IXaLo+FiwtgTlvIAznp4+G3khsBk3Pf5mYvqOwMqZnNnw3i9cRDoT2JPaCZuvreskDuXkHxfQMvfbBgdBbiI2hC/3QLCg6lESZZkrfJ7nSj3gWNEMcRkYJsf5L0BXENBl1WV8/aquMLM9/eSJ0UtxZmFGGg4MigZ75ovHnvsOcUX09zRbzjCrU/K/Rev0gT2i2vu4cZrNI1+sH2e49Yb3lRC6e9fSS9ETohjj7hdkx0rQ/57/rxIrhBQdCv494Hlrtz1lo30Qjz1z+cRh02ndTNIMm1j8NxtmePs+76i+/esJHrH/6dGh/YntoRf9l2RtQWgJXzY4bdtbqx0OhnYldoHv7I79jf4+rOGGaRWr14yToLcTG0Ky/v32rjAsdX9S5vgI4ENqT2Asa7Z/9vq0yStiGNNVHkOe/RGmqwBQ0jEDHFpoJ85BLN+jPaRoHGWl2/2yx3msxVRHjZ0Td4GfV/Bf9bCM1dBiBfrHeJ1HR6dKEedDf5yPdBLilp/efC3Ribb1VxlUHGQe8iTb0598+Hdqf2B6a3b9SOerezsoIBWaJ3IBn1fp0j4PeQmwMzc5/idLK3UZWRkmKX2zA4Vc/DoPeSGwGrdvfY24RpKmVjrLuCQdCuxE7Qkv64TZ3Z44dVPrxUOh3EK9C1/lHGpz7ZzpVsYTF7K8Hyj+Ogd5FbAk9uL9H9LIyYg821sjo13gYtD+xPbRU/9Ds/b1sZTTIr5OStMGHA6GdiV2gUf2UmQcfJdUbXOoe6HoN1A0b2uQD4EBosXJqQTwKnXvXAEX+oZlfGaS9ewetDGCLeV1exH4e9Mr+2TDpv2iggYFW+LdBsTbngv/yUroGH0jleEX7MOgtxMbQ7PzKoMuajKyM8pYIiB194HnQzsQu0Gp/LvpulVHylsgK/TgG2p/YHrqXf6T3bJUBhfxFWUDPg95CbAytm/+ycasM9WOxWu0PnTniLWE2iLRi/4Z3bJXRvY76s0+Arl93I3aMNOHPBce2PdSkL7Kpnwe9l9gGutCPoFgkUtytXAGbex0vKCznSOs00o+ToLcQG0N/QErCrG6jrTIynVUDwo896vCzssPrNnAYtD+xPfR9fwmKeu/CVhm5OAn1STPkvhxBW1KXjeP60Y/DoJ2JXaAL/RCPy+PXc80L9d7OV294dVPbC/fb4EDoLcTG0IV+TCDrrIxMHIFg512BWj9OgvYk9oK+9SMoZG55q/JMiGS40/sLjacu28T3MVfd0Aha+u3QJXr+0Q//MBtHutaPQOzh3H0RBoZS5OJ/MjqJ9x2vQb7qgSuvX0StH0+FLptzrvTDh9gl0oV+iAbi2lAsqNmbK3yBAyLNdbRzW8Y6Btqf2B76A2IURE2zZY16KGfZlwqofJSL4feABka+xCNX+ekx0LuILaFr/Zit7s4ZA7y5Qg2sDr/t4zDodxCvQt/6occctDKGriMPzH85D9qN2BG61g/QwcLSVDSGl78C6LePY6A3EptBf0BKcjWWH/GqyJqoxKnMufEVBLJxAJwJ7U9sDH3fX0CxnIB4orMyuilTyRh6g+0bfDgQ2p/YHrrQD+jV6qb/SdRrMit8TRWwyEabxgFwJrQnsQt0rR+LR3VqFNiGHRBv73ge9EZiM+haPyicuRcVmIxzAMTMl9wfi3sGtBuxF3ShH92C29yJTteU+ohbRrZk3Qe9hdgY+tYPnOqanA+mTN33ZGKE06HQbsQu0LV+MF8+94rU5dK8B8/KyJaI+6D9ie2hC/3Q12QnSnYLn5p9P/6d0D7EltAh5wz/Hv8exON/LUjHOuz5CksAAAAASUVORK5CYII=';
+
+/**
+ * Contains the cross cursor.
+ */
+ColorPicker.prototype.crossImage = 'data:image/gif;base64,R0lGODlhDwAPAKEBAAAAAP///////////yH5BAEKAAIALAAAAAAPAA8AAAIklB8Qx53b4otSUWcvyiz4/4AeQJbmKY4p1HHapBlwPL/uVRsFADs=';
+
+/**
+ * Contains the arrow cursor.
+ */
+ColorPicker.prototype.arrowImage = 'data:image/gif;base64,R0lGODlhBwALAKECAAAAAP///6g8eKg8eCH5BAEKAAIALAAAAAAHAAsAAAITTIQYcLnsgGxvijrxqdQq6DRJAQA7';
+
+/**
+ * Constructs a new color dialog.
+ */
+var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defaultColorValue, singleColorMode, liveApply, allowInherit)
+{
+	var cssDefaultColor = (defaultColorValue != null) ?
+		mxUtils.getLightDarkColor(defaultColorValue,
+			null, null, singleColorMode) : null;
+	var graph = editorUi.editor.graph;
+	this.editorUi = editorUi;
+	var useDefault = false;
+
+	function validateColor(color)
+	{
+		return mxUtils.color2hex('#' + color).substring(1).toUpperCase();
+	};
+
+	// Converts color names to hex
+	if (color != 'default' &&
+		color != 'transparent' &&
+		color != mxConstants.NONE &&
+		!mxUtils.isVarColor(color) &&
+		!mxUtils.isHexColor(color) &&
+		!mxUtils.isRgbColor(color) &&
+		!mxUtils.isLightDarkColor(color))
+	{
+		color = mxUtils.color2hex(color);
+	}
+
+	var input = document.createElement('input');
+	input.style.textOverflow = 'ellipsis';
+	input.style.marginLeft = '6px';
+	input.style.width = '100%';
+
+	var wrapper = document.createElement('div');
+
+	var inputDiv = document.createElement('div');
+	inputDiv.style.display = 'flex';
+	inputDiv.style.alignItems = 'center';
+	wrapper.appendChild(inputDiv);
+	
+	var darkInput = document.createElement('input');
+	darkInput.style.textOverflow = 'ellipsis';
+	darkInput.style.margin = '0 6px';
+	darkInput.style.maxWidth = '70px';
+	darkInput.style.width = '100%';
+
+	var darkSelect = document.createElement('select');
+	darkSelect.style.textOverflow = 'ellipsis';
+	darkSelect.style.width = '100%';
+
+	var autoDarkOption = document.createElement('option');
+	autoDarkOption.setAttribute('value', 'automatic');
+	mxUtils.write(autoDarkOption, mxResources.get('automatic'));
+	darkSelect.appendChild(autoDarkOption);
+
+	var customDarkOption = document.createElement('option');
+	customDarkOption.setAttribute('value', 'custom');
+	mxUtils.write(customDarkOption, mxResources.get('userDefined'));
+	darkSelect.appendChild(customDarkOption);
+	darkSelect.value = (!mxUtils.isLightDarkColor(color) ?
+		'automatic' : 'custom');
+
+	var darkColorDiv = document.createElement('div');
+
+	var img = document.createElement('img');
+	img.setAttribute('title', mxResources.get('dark'));
+	img.className = 'geAdaptiveAsset';
+	img.src = Editor.thinDarkImage;
+	img.style.width = '20px';
+	darkColorDiv.appendChild(img);
+
+	mxEvent.addListener(img, 'click', function()
+	{
+		darkInput.focus();
+	});
+
+	darkColorDiv.appendChild(darkInput);
+	darkColorDiv.appendChild(darkSelect);
+	darkColorDiv.style.display = 'flex';
+	darkColorDiv.style.alignItems = 'center';
+	darkColorDiv.style.marginTop = '6px';
+
+	var advancedDiv = document.createElement('div');
+	advancedDiv.style.display = 'flex';
+	advancedDiv.style.alignItems = 'center';
+	advancedDiv.style.userSelect = 'none';
+	advancedDiv.style.cursor = 'pointer';
+	advancedDiv.style.marginTop = '4px';
+	
+	var collapse = document.createElement('img');
+	collapse.setAttribute('title', mxResources.get('dark'));
+	collapse.className = 'geAdaptiveAsset';
+	advancedDiv.appendChild(collapse);
+
+	mxUtils.write(advancedDiv, mxResources.get('advanced'));
+
+	var swapBtn = document.createElement('img');
+	swapBtn.setAttribute('title', mxResources.get('swap'));
+	swapBtn.className = 'geAdaptiveAsset';
+	swapBtn.style.marginLeft = '6px';
+	swapBtn.style.width = '16px';
+	swapBtn.style.height = '16px';
+	swapBtn.style.cursor = 'pointer';
+	swapBtn.src = Editor.swapImage;
+
+	mxEvent.addListener(swapBtn, 'click', function(evt)
+	{
+		toggleDarkColor(true, false);
+		darkSelect.value = 'custom';
+		setDefaultSelected(false);
+
+		var tmp = input.value;
+		input.value = darkInput.value;
+		darkInput.value = tmp;
+
+		updateInputColors();
+		currentInput.focus();
+		doLiveApply();
+		mxEvent.consume(evt);
+	});
+
+	advancedDiv.appendChild(swapBtn);
+
+	var copyBtn = swapBtn.cloneNode();
+	copyBtn.setAttribute('title', mxResources.get('copy'));
+	copyBtn.style.marginLeft = '2px';
+	copyBtn.src = Editor.doubleArrowUpImage;
+
+	mxEvent.addListener(copyBtn, 'click', function(evt)
+	{
+		toggleDarkColor(true, false);
+		darkSelect.value = 'custom';
+		setDefaultSelected(false);
+
+		if (currentInput == darkInput)
+		{
+			input.value = darkInput.value;
 		}
 		else
 		{
-			editorUi.handleError({message: mxResources.get('invalidInput')});	
+			darkInput.value = input.value;
+		}
+
+		updateInputColors();
+		currentInput.focus();
+		doLiveApply();
+		mxEvent.consume(evt);
+	});
+
+	advancedDiv.appendChild(copyBtn);
+
+	var opacityBtn = copyBtn.cloneNode();
+	opacityBtn.setAttribute('title', mxResources.get('opacity'));
+	opacityBtn.src = Editor.opacityImage;
+
+	mxEvent.addListener(opacityBtn, 'click', function(evt)
+	{
+		var rgb = mxUtils.parseColor('#' + currentInput.value);
+		var opacity = String(Math.floor(Math.max(0, Math.min(rgb.a * 100, 100))));
+
+		editorUi.prompt(mxResources.get('opacity') + ' (0-100)', opacity, function(newValue)
+		{
+			if (!isNaN(newValue) && newValue !== '' &&
+				newValue >= 0 && newValue <= 100)
+			{
+				setDefaultSelected(false);
+				
+				input.value = mxUtils.rgba2hex(mxUtils.addAlphaToColor(
+					'#' + input.value, newValue / 100, true)).
+						substring(1).toUpperCase();
+				darkInput.value = mxUtils.rgba2hex(mxUtils.addAlphaToColor(
+					'#' + darkInput.value, newValue / 100, true)).
+						substring(1).toUpperCase();
+				
+				updateInputColors();
+				currentInput.focus();
+			}
+		});
+		
+		mxEvent.consume(evt);
+	});
+
+	advancedDiv.appendChild(opacityBtn);
+
+	function updateCollapseIcon()
+	{
+		if (darkColorDiv.style.display == 'none')
+		{
+			collapse.src = Editor.arrowRightImage;
+		}
+		else
+		{
+			collapse.src = Editor.arrowDownImage;
+		}
+	};
+
+	updateCollapseIcon();
+
+	function toggleDarkColor(show, transferFocus)
+	{
+		if (show || darkColorDiv.style.display == 'none')
+		{
+			darkColorDiv.style.display = 'flex';
+
+			if (transferFocus !== false)
+			{
+				darkInput.focus();
+			}
+		}
+		else
+		{
+			darkColorDiv.style.display = 'none';
+		}
+
+		updateCollapseIcon();
+
+		if (self.resizeFn != null)
+		{
+			self.resizeFn();
+		}
+	};
+	
+	mxEvent.addListener(advancedDiv, 'click', function()
+	{
+		toggleDarkColor();
+		updateCollapseIcon();
+		ColorDialog.collapsed = darkColorDiv.style.display == 'none';
+
+		if (self.resizeFn != null)
+		{
+			self.resizeFn();
+		}
+	});
+
+	function isDefaultColor(color)
+	{
+		var lc = color.toLowerCase();
+
+		return defaultColor != null && (color == '' ||
+			lc == 'automatic' || lc == 'default' ||
+			lc == mxResources.get('default').toLowerCase() ||
+			lc == mxResources.get('automatic').toLowerCase());
+	};
+
+	function updateInputColor(input)
+	{
+		if (input.value == '' && cssDefaultColor != null && useDefault)
+		{
+			input.style.background = (input == darkInput) ?
+				cssDefaultColor.dark :
+				cssDefaultColor.light;
+		}
+		else if (input.value == '' || input.value == mxConstants.NONE ||
+			mxUtils.isVarColor(input.value))
+		{
+			input.style.background = 'transparent';
+		}
+		else
+		{
+			var color = '#' + input.value;
+			input.style.background = color;
+		}
+
+		if (input.style.background == 'transparent')
+		{
+			input.style.color = 'light-dark(#000000, #ffffff)';
+		}
+		else
+		{
+			input.style.color =
+				(mxUtils.isDarkColor(input.style.background)) ?
+				'#ffffff' : '#000000';
+		}
+	};
+
+	function updateInputColors()
+	{
+		updateInputColor(input);
+		updateInputColor(darkInput);
+	};
+
+	function setDefaultSelected(selected)
+	{
+		if (useDefault != selected)
+		{
+			if (selected)
+			{
+				if (singleColorMode && cssDefaultColor != null)
+				{
+					input.value = cssDefaultColor.light.substring(1).toUpperCase();
+					selected = false;
+				}
+				else
+				{
+					input.value = '';
+					darkInput.value = '';
+					darkSelect.value = 'automatic';
+					input.setAttribute('placeholder', mxResources.get('useBlackAndWhite'));
+					darkInput.setAttribute('title', mxResources.get('useBlackAndWhite'));
+					input.setAttribute('title', mxResources.get('useBlackAndWhite'));
+				}
+			}
+			else
+			{
+				if (input.value == '' && cssDefaultColor != null)
+				{	
+					input.value = cssDefaultColor.light.substring(1).toUpperCase();
+				}
+
+				input.removeAttribute('placeholder');
+				input.removeAttribute('title');
+
+				if (darkInput.value == '' && cssDefaultColor != null)
+				{
+					darkInput.style.background = cssDefaultColor.dark;
+					var style = mxUtils.getCurrentStyle(darkInput);
+					darkInput.value = mxUtils.rgba2hex(style.backgroundColor).
+						substring(1).toUpperCase();
+				}
+
+				darkInput.removeAttribute('placeholder');
+				darkInput.removeAttribute('title');
+				selected = false;
+			}
+		}
+
+		useDefault = selected;
+	};
+
+	var defaultBtn = mxUtils.button('', function()
+	{
+		setDefaultSelected(true);
+		updateInputColors();
+		currentInput.focus();
+
+		if (currentInput.value == '' && cssDefaultColor != null && useDefault)
+		{
+			picker.fromString((currentInput == darkInput) ?
+				cssDefaultColor.dark :
+				cssDefaultColor.light, true);
+		}
+
+		doLiveApply();
+	});
+
+	mxEvent.addListener(darkSelect, 'change', function(evt)
+	{
+		if (darkSelect.value == 'automatic')
+		{
+			input.focus();
+			inputChanged(input);
+		}
+		else
+		{
+			setDefaultSelected(false);
+			darkInput.focus();
+			selectInput();
+		}
+
+		updateInputColors();
+		doLiveApply();
+		mxEvent.consume(evt);
+	});
+
+	function inputChanged(elt)
+	{
+		if (elt.value.charAt(0) == '#')
+		{
+			elt.value = elt.value.substring(1);
+		}
+
+		if (isDefaultColor(elt.value) && cssDefaultColor != null)
+		{
+			defaultBtn.click();
+		}
+		else
+		{
+			if (elt.value != mxConstants.NONE &&
+				!mxUtils.isVarColor(elt.value))
+			{
+				elt.value = validateColor(elt.value);
+				picker.fromString('#' + elt.value);
+			}
+
+			setDefaultSelected(false);
+
+			if (elt == darkInput &&
+				(input.value != mxConstants.NONE ||
+				darkInput.value != mxConstants.NONE))
+			{
+				darkSelect.value = 'custom';
+			}
+
+			if (elt == input && darkSelect.value == 'automatic')
+			{
+				if (input.value == mxConstants.NONE)
+				{
+					darkInput.value = mxConstants.NONE;
+				}
+				else if (mxUtils.isVarColor(input.value))
+				{
+					darkInput.value = input.value;
+				}
+				else
+				{
+					darkInput.value = mxUtils.rgba2hex(mxUtils.
+						getInverseColor('#' + elt.value)).
+						substring(1).toUpperCase();
+				}
+			}
+
+			updateInputColors();
+		}
+	};
+
+	mxEvent.addListener(input, 'change', function()
+	{
+		inputChanged(input);
+		doLiveApply();
+	});
+
+	mxEvent.addListener(darkInput, 'change', function()
+	{
+		inputChanged(darkInput);
+		doLiveApply();
+	});
+	
+	var applyFunction = (apply != null) ? apply :
+		this.createApplyFunction();
+
+	var self = this;
+
+	function buildFinalColor()
+	{
+		var color = input.value;
+		var dark = darkInput.value;
+
+		// Blocks any non-alphabetic chars in colors
+		if ((useDefault && cssDefaultColor != null) ||
+			((/(^#?[a-zA-Z0-9]*$)/.test(color) || mxUtils.isVarColor(color)) &&
+			(/(^#?[a-zA-Z0-9]*$)/.test(dark) || mxUtils.isVarColor(dark))))
+		{
+			if (useDefault)
+			{
+				color = 'default';
+			}
+			else
+			{
+				if (color == '')
+				{
+					color = mxConstants.NONE;
+				}
+
+				if (dark == '')
+				{
+					dark = mxConstants.NONE;
+				}
+
+				if (color != mxConstants.NONE &&
+					!mxUtils.isVarColor(color) &&
+					color.charAt(0) != '#')
+				{
+					color = '#' + validateColor(color);
+				}
+
+				if (dark != mxConstants.NONE &&
+					!mxUtils.isVarColor(dark) &&
+					dark.charAt(0) != '#')
+				{
+					dark = '#' + validateColor(dark);
+				}
+
+				if (color != 'none' || dark != 'none')
+				{
+					color = (color == mxConstants.NONE) ? 'transparent' : color;
+					dark = (dark == mxConstants.NONE) ? 'transparent' : dark;
+
+					if (!singleColorMode && darkSelect.value != 'automatic')
+					{
+						color = 'light-dark(' + color + ',' + dark + ')';
+					}
+				}
+			}
+
+			return {color: color, valid: true};
+		}
+		else
+		{
+			return {color: null, valid: false};
+		}
+	};
+
+	// Tracks the recent color entry for the current editing session
+	// so successive changes update the same slot instead of flooding the list
+	var sessionRecentColor = null;
+
+	function addCurrentToRecent()
+	{
+		var color = input.value;
+		var dark = darkInput.value;
+
+		if (!((useDefault && cssDefaultColor != null) ||
+			((/(^#?[a-zA-Z0-9]*$)/.test(color) || mxUtils.isVarColor(color)) &&
+			(/(^#?[a-zA-Z0-9]*$)/.test(dark) || mxUtils.isVarColor(dark)))))
+		{
+			return;
+		}
+
+		if (!useDefault)
+		{
+			if (color == '') color = mxConstants.NONE;
+			if (dark == '') dark = mxConstants.NONE;
+
+			if (color != mxConstants.NONE &&
+				!mxUtils.isVarColor(color) &&
+				color.charAt(0) != '#')
+			{
+				color = '#' + validateColor(color);
+			}
+
+			if (dark != mxConstants.NONE &&
+				!mxUtils.isVarColor(dark) &&
+				dark.charAt(0) != '#')
+			{
+				dark = '#' + validateColor(dark);
+			}
+
+			var recentCount = 12;
+			var newEntry = null;
+
+			if (darkSelect.value != 'automatic' &&
+				dark != mxConstants.NONE)
+			{
+				if (color == mxConstants.NONE)
+				{
+					newEntry = dark.substring(1);
+				}
+				else
+				{
+					newEntry = 'light-dark(' + color + ',' + dark + ')';
+				}
+			}
+			else if (color != mxConstants.NONE)
+			{
+				newEntry = color.substring(1);
+			}
+			else
+			{
+				newEntry = mxConstants.NONE;
+			}
+
+			// Remove previous session entry before adding new one
+			if (sessionRecentColor != null)
+			{
+				mxUtils.remove(sessionRecentColor, ColorDialog.recentColors);
+			}
+
+			ColorDialog.addRecentColor(newEntry, recentCount);
+			sessionRecentColor = newEntry;
+		}
+	};
+
+	function doApply()
+	{
+		var result = buildFinalColor();
+
+		if (result.valid)
+		{
+			addCurrentToRecent();
+			applyFunction(result.color);
+			refreshRecentColors();
+
+			if (!liveApply)
+			{
+				editorUi.hideDialog();
+			}
+		}
+		else if (!liveApply)
+		{
+			editorUi.handleError({message: mxResources.get('invalidInput')});
+		}
+	};
+
+	// Debounced apply for live mode (picker drag)
+	var liveApplyTimer = null;
+
+	function doLiveApply(delay)
+	{
+		if (liveApply)
+		{
+			if (liveApplyTimer != null)
+			{
+				clearTimeout(liveApplyTimer);
+			}
+
+			liveApplyTimer = setTimeout(function()
+			{
+				liveApplyTimer = null;
+				var result = buildFinalColor();
+
+				if (result.valid)
+				{
+					addCurrentToRecent();
+					applyFunction(result.color);
+					refreshRecentColors();
+				}
+			}, delay || 0);
+		}
+	};
+
+	function selectInput()
+	{
+		if (!mxClient.IS_TOUCH)
+		{
+			window.setTimeout(function()
+			{
+				currentInput.focus();
+				
+				if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5)
+				{
+					currentInput.select();
+				}
+				else
+				{
+					document.execCommand('selectAll', false, null);
+				}
+			}, 0);
 		}
 	};
 	
 	this.init = function()
 	{
-		if (!mxClient.IS_TOUCH)
+		selectInput();
+	};
+
+	var picker = new ColorPicker();
+	var currentInput = (Editor.isDarkMode() &&
+		(graph.getAdaptiveColors() == 'auto' ||
+		(graph.getAdaptiveColors() == 'simple' &&
+		darkSelect.value == 'custom')) &&
+		!singleColorMode) ? darkInput : input;
+	
+	function updatePickerFromCurrentInput()
+	{
+		if (currentInput.value != mxConstants.NONE &&
+			currentInput.value != '')
 		{
-			input.focus();
+			picker.fromString('#' + currentInput.value, true);
 		}
 	};
 
-	var picker = new mxJSColor.color(input);
-	picker.pickerOnfocus = false;
-	picker.showPicker();
+	mxEvent.addListener(input, 'focus', function()
+	{
+		currentInput = input;
+		updatePickerFromCurrentInput();
+		copyBtn.src = Editor.doubleArrowDownImage;
+	});
+
+	mxEvent.addListener(darkInput, 'focus', function()
+	{
+		currentInput = darkInput;
+		updatePickerFromCurrentInput();
+		copyBtn.src = Editor.doubleArrowUpImage;
+	});
+
+	picker.addListener('change', function(sender, evt)
+	{
+		var color = evt.getProperty('color').substring(1).toUpperCase();
+
+		if (currentInput.value.toUpperCase() != color)
+		{
+			currentInput.value = color;
+			inputChanged(currentInput);
+
+			window.setTimeout(function()
+			{
+				currentInput.focus();
+			}, 0);
+		}
+	});
+
+	picker.addListener('release', function()
+	{
+		doLiveApply();
+	});
 
 	var div = document.createElement('div');
-	mxJSColor.picker.box.style.position = 'relative';
-	mxJSColor.picker.box.style.width = '230px';
-	mxJSColor.picker.box.style.height = '100px';
-	mxJSColor.picker.box.style.paddingBottom = '10px';
-	div.appendChild(mxJSColor.picker.box);
 
-	var center = document.createElement('center');
+	// The tool-window (liveApply) host is a borderless mxWindow with no
+	// padding of its own, so the content supplies it. The modal dialog host
+	// (.geDialog) already pads, so skip it there to avoid double padding and
+	// to keep the 230px picker from overflowing the padded content box.
+	if (liveApply)
+	{
+		div.style.padding = '12px 12px 18px 12px';
+	}
+
+	div.appendChild(picker.div);
+	picker.div.style.marginBottom = '10px';
+
+	var center = document.createElement('div');
+	center.style.display = 'flex';
+	center.style.flexFlow = 'row wrap';
+	center.style.justifyContent = 'center';
+	center.style.marginTop = '10px';
 	
 	function createRecentColorTable()
 	{
-		var table = addPresets((ColorDialog.recentColors.length == 0) ? ['FFFFFF'] :
-					ColorDialog.recentColors, 11, 'FFFFFF', true);
-		table.style.marginBottom = '8px';
-		
+		var table = addPresets((ColorDialog.recentColors.length == 0) ?
+			['FFFFFF'] : ColorDialog.recentColors, 11, 'FFFFFF', true);
+		table.style.marginBottom = '6px';
+
 		return table;
 	};
 	
-	function addPresets(presets, rowLength, defaultColor, addResetOption)
+	var addPresets = mxUtils.bind(this, function(presets, rowLength, defaultColor, addResetOption)
 	{
 		rowLength = (rowLength != null) ? rowLength : 12;
 		var table = document.createElement('table');
 		table.style.borderCollapse = 'collapse';
 		table.setAttribute('cellspacing', '0');
-		table.style.marginBottom = '20px';
+		table.style.marginBottom = '10px';
 		table.style.cellSpacing = '0px';
 		var tbody = document.createElement('tbody');
 		table.appendChild(tbody);
@@ -113,10 +1060,10 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 			
 			for (var i = 0; i < rowLength; i++)
 			{
-				(function(clr)
+				(mxUtils.bind(this, function(clr)
 				{
 					var td = document.createElement('td');
-					td.style.border = '1px solid black';
+					td.style.border = '0px solid black';
 					td.style.padding = '0px';
 					td.style.width = '16px';
 					td.style.height = '16px';
@@ -125,14 +1072,36 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 					{
 						clr = defaultColor;
 					}
-					
-					if (clr == 'none')
+
+					if (clr != null)
 					{
-						td.style.background = 'url(\'' + Dialog.prototype.noColorImage + '\')';
-					}
-					else
-					{
-						td.style.backgroundColor = '#' + clr;
+						td.style.borderWidth = '1px';
+
+						if (clr == mxConstants.NONE || clr == null)
+						{
+							td.style.background = 'url(\'' + Dialog.prototype.noColorImage + '\')';
+						}
+						else
+						{
+							if (mxUtils.isLightDarkColor(clr))
+							{
+								var cssColor = mxUtils.getLightDarkColor(clr);
+								td.style.background = 'linear-gradient(to right bottom, ' +
+									cssColor.cssText + ' 50%, ' +
+									mxUtils.invertLightDarkColor(cssColor).cssText + ' 50.3%)';
+							}
+							else
+							{
+								td.style.backgroundColor = '#' + clr;
+							}
+						}
+
+						var name = this.colorNames[String(clr).toUpperCase()];
+
+						if (name != null)
+						{
+							td.setAttribute('title', name);
+						}
 					}
 					
 					tr.appendChild(td);
@@ -143,20 +1112,85 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 						
 						mxEvent.addListener(td, 'click', function()
 						{
-							if (clr == 'none')
+							if (clr == mxConstants.NONE)
 							{
-								picker.fromString('ffffff');
-								input.value = 'none';
+								if (currentInput == darkInput &&
+									darkInput.value == mxConstants.NONE)
+								{
+									input.value = mxConstants.NONE
+								}
+								else
+								{
+									currentInput.value = mxConstants.NONE;
+								}
+								
+								if (currentInput == input ||
+									(currentInput == darkInput &&
+									input.value == mxConstants.NONE))
+								{
+									darkSelect.value = 'automatic';
+								}
+
+								inputChanged(currentInput);
+								doLiveApply();
+
+								window.setTimeout(function()
+								{
+									currentInput.focus();
+								}, 0);
 							}
 							else
 							{
-								picker.fromString(clr);
+								if (mxUtils.isLightDarkColor(clr))
+								{
+									var cssColor = mxUtils.getLightDarkColor(clr);
+
+									if (singleColorMode)
+									{
+										input.value = cssColor.light.substring(1).toUpperCase();
+										inputChanged(input);
+										picker.fromString(cssColor.light);
+										doLiveApply();
+									}
+									else
+									{
+										toggleDarkColor(true, false);
+										darkSelect.value = 'custom';
+										input.value = cssColor.light.substring(1).toUpperCase();
+										darkInput.value = cssColor.dark.substring(1).toUpperCase();
+										inputChanged(input);
+										inputChanged(darkInput);
+										doLiveApply();
+
+										if (currentInput == input)
+										{
+											picker.fromString(cssColor.light);
+										}
+										else
+										{
+											picker.fromString(cssColor.dark);
+										}
+									}
+								}
+								else
+								{
+									picker.fromString('#' + clr);
+									doLiveApply();
+								}
 							}
 						});
 						
-						mxEvent.addListener(td, 'dblclick', doApply);
+						mxEvent.addListener(td, 'dblclick', function()
+							{
+								doApply();
+
+								if (liveApply && self.closeFn != null)
+								{
+									self.closeFn();
+								}
+							});
 					}
-				})(presets[row * rowLength + i]);
+				}))(presets[row * rowLength + i]);
 			}
 			
 			tbody.appendChild(tr);
@@ -166,12 +1200,14 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 		{
 			var td = document.createElement('td');
 			td.setAttribute('title', mxResources.get('reset'));
+			td.className = 'geAdaptiveAsset';
 			td.style.border = '1px solid black';
 			td.style.padding = '0px';
 			td.style.width = '16px';
 			td.style.height = '16px';
-			td.style.backgroundImage = 'url(\'' + Dialog.prototype.closeImage + '\')';
+			td.style.backgroundImage = 'url(\'' + Editor.crossImage + '\')';
 			td.style.backgroundPosition = 'center center';
+			td.style.backgroundSize = '14px 14px';
 			td.style.backgroundRepeat = 'no-repeat';
 			td.style.cursor = 'pointer';
 			
@@ -180,74 +1216,354 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 			mxEvent.addListener(td, 'click', function()
 			{
 				ColorDialog.resetRecentColors();
-				table.parentNode.replaceChild(createRecentColorTable(), table);
+				var newTable = createRecentColorTable();
+
+				if (table.parentNode != null)
+				{
+					table.parentNode.replaceChild(newTable, table);
+				}
+
+				recentTable = newTable;
 			});
 		}
 		
 		center.appendChild(table);
 		
 		return table;
+	});
+
+	var lightIcon = null;
+
+	if (!singleColorMode)
+	{
+		wrapper.appendChild(advancedDiv);
+
+		if (ColorDialog.collapsed && (!Editor.isDarkMode() ||
+			graph.getAdaptiveColors() != 'auto') &&
+			darkSelect.value == 'automatic')
+		{
+			darkColorDiv.style.display = 'none';
+			updateCollapseIcon();
+		}
+
+		lightIcon = document.createElement('img');
+		lightIcon.setAttribute('title', mxResources.get('light'));
+		lightIcon.className = 'geAdaptiveAsset';
+		lightIcon.src = Editor.thinLightImage;
+		lightIcon.style.width = '20px';
+		inputDiv.appendChild(lightIcon);
+
+		mxEvent.addListener(lightIcon, 'click', function()
+		{
+			input.focus();
+		});
+	}
+
+	inputDiv.appendChild(input);
+
+	defaultBtn.style.cursor = 'pointer';
+	defaultBtn.style.position = 'relative';
+	defaultBtn.style.marginLeft = '6px';
+
+	if (cssDefaultColor != null)
+	{
+		defaultBtn.setAttribute('title', mxResources.get(
+			(singleColorMode) ? 'default' : 'useBlackAndWhite'));
+		defaultBtn.innerText = '';
+
+		var def = document.createElement('div');
+		def.style.display = 'inline-block';
+		def.style.verticalAlign = 'middle';
+		def.style.borderStyle = 'solid';
+		def.style.borderWidth = '1px';
+		def.style.marginTop = '-2px';
+		def.style.width = '12px';
+		def.style.height = '12px';
+
+		if (singleColorMode)
+		{
+			def.style.backgroundColor = cssDefaultColor.light;
+		}
+		else
+		{
+			def.style.backgroundImage = 'linear-gradient(to right bottom, ' +
+				cssDefaultColor.cssText + ' 50%, ' +
+				mxUtils.invertLightDarkColor(cssDefaultColor).cssText + ' 50.3%)';
+		}
+
+		defaultBtn.appendChild(def);
+	}
+	else
+	{
+		defaultBtn.style.display = 'none';
+	}
+
+	inputDiv.appendChild(defaultBtn);
+
+	mxEvent.addListener(defaultBtn, 'dblclick', function()
+	{
+		doApply();
+
+		if (liveApply && self.closeFn != null)
+		{
+			self.closeFn();
+		}
+	});
+
+	var clrInput = document.createElement('input');
+	clrInput.setAttribute('type', 'color');
+	clrInput.style.position = 'relative';
+	clrInput.style.visibility = 'hidden';
+	clrInput.style.top = '10px';
+	clrInput.style.width = '0px';
+	clrInput.style.height = '0px';
+	clrInput.style.border = 'none';
+	
+	div.style.whiteSpace = 'nowrap';
+	inputDiv.appendChild(clrInput);
+
+	var dropperBtn = mxUtils.button('', function()
+	{
+		// LATER: Check if clrInput is expanded
+		if (document.activeElement == clrInput)
+		{
+			input.focus();
+		}
+		else
+		{
+			clrInput.value = '#' + input.value;
+			clrInput.click();
+		}
+	});
+
+	dropperBtn.setAttribute('title', mxResources.get('colorPicker', null, 'Color Picker'));
+	dropperBtn.style.cursor = 'pointer';
+
+	var dropper = document.createElement('img');
+	dropper.src = Editor.colorDropperImage;
+	dropper.className = 'geAdaptiveAsset';
+	dropper.style.position = 'relative';
+	dropper.style.verticalAlign = 'middle';
+	dropper.style.marginTop = '-2px';
+	dropper.style.width = 'auto';
+	dropper.style.height = '14px';
+
+	dropperBtn.appendChild(dropper);
+	inputDiv.appendChild(dropperBtn);
+
+	div.appendChild(wrapper);
+
+	mxEvent.addListener(clrInput, 'change', function()
+	{
+		picker.fromString(clrInput.value);
+	});
+
+	if (!singleColorMode)
+	{
+		div.appendChild(darkColorDiv);
+	}
+
+	// Adds recent colors
+	var recentTable = createRecentColorTable();
+
+	function refreshRecentColors()
+	{
+		if (recentTable != null && recentTable.parentNode != null)
+		{
+			recentTable.parentNode.removeChild(recentTable);
+		}
+
+		recentTable = createRecentColorTable();
+
+		if (center.firstChild != recentTable)
+		{
+			center.insertBefore(recentTable, center.firstChild);
+		}
 	};
 
-	div.appendChild(input);
-	mxUtils.br(div);
-	
-	// Adds recent colors
-	createRecentColorTable();
-		
 	// Adds presets
 	var table = addPresets(this.presetColors);
-	table.style.marginBottom = '8px';
+	table.style.marginBottom = '6px';
 	table = addPresets(this.defaultColors);
-	table.style.marginBottom = '16px';
+	table.style.marginBottom = '0';
 
 	div.appendChild(center);
 
-	var buttons = document.createElement('div');
-	buttons.style.textAlign = 'right';
-	buttons.style.whiteSpace = 'nowrap';
-	
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	// Offers an explicit "Inherit" choice so a color can be set to inherit from
+	// the parent (eg. a table/swimlane cell using its container's color). Shown
+	// only when the caller marks the value as inheritable (allowInherit). Applies
+	// the 'inherit' sentinel and closes the picker like choosing a color.
+	var inheritBtn = mxUtils.button(mxResources.get('inherit'), function()
 	{
-		editorUi.hideDialog();
-		
-		if (cancelFn != null)
+		applyFunction('inherit');
+
+		if (liveApply)
 		{
-			cancelFn();
+			if (self.closeFn != null)
+			{
+				self.closeFn();
+			}
+		}
+		else
+		{
+			editorUi.hideDialog();
 		}
 	});
-	cancelBtn.className = 'geBtn';
 
-	if (editorUi.editor.cancelFirst)
+	inheritBtn.setAttribute('title', mxResources.get('inherit'));
+	// allowInherit may be a live predicate (re-evaluated as the selection changes
+	// while the reused color window stays open) or a plain boolean
+	function inheritAllowed(v)
 	{
-		buttons.appendChild(cancelBtn);
-	}
-	
-	var applyBtn = mxUtils.button(mxResources.get('apply'), doApply);
-	applyBtn.className = 'geBtn gePrimaryBtn';
-	buttons.appendChild(applyBtn);
-	
-	if (!editorUi.editor.cancelFirst)
+		return (typeof v === 'function') ? v() : v;
+	};
+
+	inheritBtn.style.display = (inheritAllowed(allowInherit)) ? '' : 'none';
+	inheritBtn.style.width = '100%';
+	inheritBtn.style.margin = '6px 0 0 0';
+	div.appendChild(inheritBtn);
+
+	var buttons = null;
+
+	if (!liveApply)
 	{
-		buttons.appendChild(cancelBtn);
+		buttons = document.createElement('div');
+		buttons.style.display = 'flex';
+		buttons.style.whiteSpace = 'nowrap';
+		buttons.style.alignItems = 'center';
+		buttons.style.justifyContent = 'end';
+		buttons.style.marginTop = '34px';
+
+		if (!editorUi.isOffline())
+		{
+			buttons.appendChild(editorUi.createHelpIcon('https://www.drawio.com/docs/manual/editor/appearance/adaptive-colours/'));
+		}
+
+		var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+		{
+			editorUi.hideDialog();
+
+			if (cancelFn != null)
+			{
+				cancelFn();
+			}
+		});
+		cancelBtn.className = 'geBtn';
+
+		if (editorUi.editor.cancelFirst)
+		{
+			buttons.appendChild(cancelBtn);
+		}
+
+		var applyBtn = mxUtils.button(mxResources.get('apply'), doApply);
+		applyBtn.className = 'geBtn gePrimaryBtn';
+		buttons.appendChild(applyBtn);
+
+		if (!editorUi.editor.cancelFirst)
+		{
+			buttons.appendChild(cancelBtn);
+		}
 	}
 	
 	if (color != null)
 	{
-		if (color == 'none')
+		if (color == 'default')
 		{
-			picker.fromString('ffffff');
-			input.value = 'none';
+			defaultBtn.click();
 		}
 		else
 		{
-			picker.fromString(color);
+			var cssColor = mxUtils.getLightDarkColor(color);
+
+			if (color == mxConstants.NONE ||
+				cssColor.light == 'transparent')
+			{
+				input.value = mxConstants.NONE;
+			}
+			else
+			{
+				if (mxUtils.isVarColor(cssColor.light))
+				{
+					input.value = cssColor.light;
+				}
+				else
+				{
+					if (mxUtils.isRgbColor(cssColor.light))
+					{
+						cssColor.light = mxUtils.rgba2hex(cssColor.light);
+					}
+					else if (!mxUtils.isHexColor(cssColor.light))
+					{
+						cssColor.light = '#' + validateColor(cssColor.light);
+					}
+
+					input.value = cssColor.light.substring(1).toUpperCase();
+				}
+			}
+
+			if (color == mxConstants.NONE ||
+				cssColor.dark == 'transparent')
+			{
+				darkInput.value = mxConstants.NONE;
+			}
+			else
+			{
+				if (mxUtils.isVarColor(cssColor.dark))
+				{
+					darkInput.value = cssColor.dark;
+				}
+				else
+				{
+					if (mxUtils.isRgbColor(cssColor.dark))
+					{
+						cssColor.dark = mxUtils.rgba2hex(cssColor.dark);
+					}
+					else if (!mxUtils.isHexColor(cssColor.dark))
+					{
+						cssColor.dark = '#' + validateColor(cssColor.dark);
+					}
+					
+					darkInput.value = cssColor.dark.substring(1).toUpperCase();
+				}
+			}
+
+			updatePickerFromCurrentInput();
+			updateInputColors();
 		}
 	}
 	
-	div.appendChild(buttons);
+	if (!singleColorMode && ColorDialog.collapsed &&
+		darkSelect.value == 'automatic' &&
+		!Editor.isDarkMode())
+	{
+		darkColorDiv.style.display = 'none';
+		updateCollapseIcon();
+	}
+	
+	if (buttons != null)
+	{
+		div.appendChild(buttons);
+	}
+
 	this.picker = picker;
 	this.colorInput = input;
+
+	function keyPressed(e)
+	{
+		if (e.keyCode == 13)
+		{
+			inputChanged(mxEvent.getSource(e));
+			doApply();
+
+			if (liveApply && self.closeFn != null)
+			{
+				self.closeFn();
+			}
+		}
+	};
+
+	mxEvent.addListener(input, 'keypress', keyPressed);
+	mxEvent.addListener(darkInput, 'keypress', keyPressed);
 
 	// LATER: Only fires if input if focused, should always
 	// fire if this dialog is showing.
@@ -255,24 +1571,243 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 	{
 		if (e.keyCode == 27)
 		{
-			editorUi.hideDialog();
-			
-			if (cancelFn != null)
+			if (liveApply)
 			{
-				cancelFn();
+				if (self.closeFn != null)
+				{
+					self.closeFn();
+				}
 			}
-			
+			else
+			{
+				editorUi.hideDialog();
+
+				if (cancelFn != null)
+				{
+					cancelFn();
+				}
+			}
+
 			mxEvent.consume(e);
 		}
 	});
-	
+
 	this.container = div;
+
+	// Methods for reuse in live mode
+	this.closeFn = null;
+	this.resizeFn = null;
+
+	this.setApplyFn = function(fn)
+	{
+		applyFunction = fn;
+	};
+
+	this.setColor = function(newColor, newDefaultColor, newDefaultColorValue, newSingleColorMode, newAllowInherit)
+	{
+		// Reset session tracking for recent colors
+		sessionRecentColor = null;
+
+		// Update default color state
+		defaultColor = newDefaultColor;
+		defaultColorValue = newDefaultColorValue;
+		singleColorMode = newSingleColorMode;
+
+		// Toggles the inherit affordance for the reused (non-modal) picker
+		inheritBtn.style.display = (inheritAllowed(newAllowInherit)) ? '' : 'none';
+		cssDefaultColor = (newDefaultColorValue != null) ?
+			mxUtils.getLightDarkColor(newDefaultColorValue,
+				null, null, newSingleColorMode) : null;
+		useDefault = false;
+
+		// Update singleColorMode visibility
+		if (newSingleColorMode)
+		{
+			advancedDiv.style.display = 'none';
+			darkColorDiv.style.display = 'none';
+
+			if (lightIcon != null)
+			{
+				lightIcon.style.display = 'none';
+			}
+
+			currentInput = input;
+			input.focus();
+		}
+		else
+		{
+			advancedDiv.style.display = 'flex';
+
+			if (lightIcon != null)
+			{
+				lightIcon.style.display = '';
+			}
+
+			if (ColorDialog.collapsed && darkSelect.value == 'automatic' &&
+				!Editor.isDarkMode())
+			{
+				darkColorDiv.style.display = 'none';
+			}
+			else
+			{
+				darkColorDiv.style.display = 'flex';
+			}
+
+			updateCollapseIcon();
+		}
+
+		// Update default button
+		if (cssDefaultColor != null)
+		{
+			defaultBtn.style.display = '';
+			defaultBtn.setAttribute('title', mxResources.get(
+				(newSingleColorMode) ? 'default' : 'useBlackAndWhite'));
+			defaultBtn.innerText = '';
+
+			var def = document.createElement('div');
+			def.style.display = 'inline-block';
+			def.style.verticalAlign = 'middle';
+			def.style.borderStyle = 'solid';
+			def.style.borderWidth = '1px';
+			def.style.marginTop = '-2px';
+			def.style.width = '12px';
+			def.style.height = '12px';
+
+			if (newSingleColorMode)
+			{
+				def.style.backgroundColor = cssDefaultColor.light;
+			}
+			else
+			{
+				def.style.backgroundImage = 'linear-gradient(to right bottom, ' +
+					cssDefaultColor.cssText + ' 50%, ' +
+					mxUtils.invertLightDarkColor(cssDefaultColor).cssText + ' 50.3%)';
+			}
+
+			defaultBtn.appendChild(def);
+		}
+		else
+		{
+			defaultBtn.style.display = 'none';
+		}
+
+		// Set color values
+		if (newColor != null)
+		{
+			// Converts color names to hex
+			if (newColor != 'default' &&
+				newColor != 'transparent' &&
+				newColor != mxConstants.NONE &&
+				!mxUtils.isVarColor(newColor) &&
+				!mxUtils.isHexColor(newColor) &&
+				!mxUtils.isRgbColor(newColor) &&
+				!mxUtils.isLightDarkColor(newColor))
+			{
+				newColor = mxUtils.color2hex(newColor);
+			}
+
+			darkSelect.value = (!mxUtils.isLightDarkColor(newColor) ?
+				'automatic' : 'custom');
+
+			if (newColor == 'default')
+			{
+				setDefaultSelected(true);
+				updateInputColors();
+
+				if (cssDefaultColor != null)
+				{
+					picker.fromString((currentInput == darkInput) ?
+						cssDefaultColor.dark :
+						cssDefaultColor.light, true);
+				}
+			}
+			else
+			{
+				var cssColor = mxUtils.getLightDarkColor(newColor);
+
+				if (newColor == mxConstants.NONE ||
+					cssColor.light == 'transparent')
+				{
+					input.value = mxConstants.NONE;
+				}
+				else
+				{
+					if (mxUtils.isVarColor(cssColor.light))
+					{
+						input.value = cssColor.light;
+					}
+					else
+					{
+						if (mxUtils.isRgbColor(cssColor.light))
+						{
+							cssColor.light = mxUtils.rgba2hex(cssColor.light);
+						}
+						else if (!mxUtils.isHexColor(cssColor.light))
+						{
+							cssColor.light = '#' + validateColor(cssColor.light);
+						}
+
+						input.value = cssColor.light.substring(1).toUpperCase();
+					}
+				}
+
+				if (newColor == mxConstants.NONE ||
+					cssColor.dark == 'transparent')
+				{
+					darkInput.value = mxConstants.NONE;
+				}
+				else
+				{
+					if (mxUtils.isVarColor(cssColor.dark))
+					{
+						darkInput.value = cssColor.dark;
+					}
+					else
+					{
+						if (mxUtils.isRgbColor(cssColor.dark))
+						{
+							cssColor.dark = mxUtils.rgba2hex(cssColor.dark);
+						}
+						else if (!mxUtils.isHexColor(cssColor.dark))
+						{
+							cssColor.dark = '#' + validateColor(cssColor.dark);
+						}
+
+						darkInput.value = cssColor.dark.substring(1).toUpperCase();
+					}
+				}
+
+				updatePickerFromCurrentInput();
+				updateInputColors();
+			}
+		}
+
+		if (!newSingleColorMode && ColorDialog.collapsed &&
+			darkSelect.value == 'automatic' &&
+			!Editor.isDarkMode())
+		{
+			darkColorDiv.style.display = 'none';
+			updateCollapseIcon();
+		}
+
+		refreshRecentColors();
+
+		if (self.resizeFn != null)
+		{
+			self.resizeFn();
+		}
+	};
 };
 
 /**
  * Creates function to apply value
  */
 ColorDialog.prototype.presetColors = ['E6D0DE', 'CDA2BE', 'B5739D', 'E1D5E7', 'C3ABD0', 'A680B8', 'D4E1F5', 'A9C4EB', '7EA6E0', 'D5E8D4', '9AC7BF', '67AB9F', 'D5E8D4', 'B9E0A5', '97D077', 'FFF2CC', 'FFE599', 'FFD966', 'FFF4C3', 'FFCE9F', 'FFB570', 'F8CECC', 'F19C99', 'EA6B66']; 
+
+/**
+ * Creates function to apply value
+ */
+ColorDialog.prototype.colorNames = {};
 
 /**
  * Creates function to apply value
@@ -288,22 +1823,30 @@ ColorDialog.prototype.defaultColors = ['none', 'FFFFFF', 'E6E6E6', 'CCCCCC', 'B3
  */
 ColorDialog.prototype.createApplyFunction = function()
 {
-	return mxUtils.bind(this, function(color)
+	return ColorDialog.createApplyFunction(this.editorUi, this.currentColorKey);
+};
+
+/**
+ * Creates function to apply value
+ */
+ColorDialog.createApplyFunction = function(editorUi, colorKey)
+{
+	return function(color)
 	{
-		var graph = this.editorUi.editor.graph;
+		var graph = editorUi.editor.graph;
 		
 		graph.getModel().beginUpdate();
 		try
 		{
-			graph.setCellStyles(this.currentColorKey, color);
-			this.editorUi.fireEvent(new mxEventObject('styleChanged', 'keys', [this.currentColorKey],
+			graph.setCellStyles(colorKey, color);
+			editorUi.fireEvent(new mxEventObject('styleChanged', 'keys', [colorKey],
 				'values', [color], 'cells', graph.getSelectionCells()));
 		}
 		finally
 		{
 			graph.getModel().endUpdate();
 		}
-	});
+	};
 };
 
 /**
@@ -334,6 +1877,177 @@ ColorDialog.addRecentColor = function(color, max)
 ColorDialog.resetRecentColors = function()
 {
 	ColorDialog.recentColors = [];
+};
+
+/**
+ * Remembers collapsed dark color state.
+ */
+ColorDialog.collapsed = true;
+
+/**
+ * Non-modal color picker tool window.
+ */
+var ColorWindow = function(editorUi, x, y, w)
+{
+	var graph = editorUi.editor.graph;
+
+	this.colorDialog = new ColorDialog(editorUi, mxConstants.NONE,
+		function() {}, null, null, null, false, true);
+
+	// Initial height from content
+	var container = this.colorDialog.container;
+	var titleHeight = 26;
+	var initH = titleHeight + 200;
+
+	this.window = new mxWindow('', container,
+		x, y, w, initH, true, true);
+	this.window.minimumSize = new mxRectangle(0, 0, 260, 200);
+	this.window.destroyOnClose = false;
+	this.window.setMaximizable(false);
+	this.window.setResizable(false);
+	this.window.setClosable(true);
+
+	var self = this;
+
+	this.fitHeight = function()
+	{
+		// While minimized the content is hidden (scrollHeight 0), so measuring
+		// would shrink to the title bar and setSize would then clamp back up to
+		// minimumSize, leaving a wrong-sized empty window. The minimize/restore
+		// logic owns the size in that state, so leave it alone.
+		if (self.window.minimized)
+		{
+			return;
+		}
+
+		var titleH = self.window.title.offsetHeight || titleHeight;
+		var contentH = container.scrollHeight;
+		var newH = titleH + contentH + self.window.contentHeightCorrection;
+		self.window.setSize(parseInt(self.window.div.style.width), newH);
+		self.window.fit();
+	};
+
+	this.colorDialog.closeFn = mxUtils.bind(this, function()
+	{
+		this.window.setVisible(false);
+	});
+
+	this.colorDialog.resizeFn = mxUtils.bind(this, function()
+	{
+		this.fitHeight();
+	});
+
+	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function()
+	{
+		this.fitHeight();
+	}));
+
+	// State for auto-refresh
+	this.getColorFn = null;
+	this.currentDefaultColor = null;
+	this.currentDefaultColorValue = null;
+	this.currentSingleColorMode = null;
+	this.currentAllowInherit = null;
+	this.applying = false;
+
+	// Text selection of the in-place editor that colors are applied to
+	this.selState = null;
+
+	var refreshColor = mxUtils.bind(this, function()
+	{
+		if (this.window.isVisible() && this.getColorFn != null &&
+			!this.applying)
+		{
+			var color = this.getColorFn();
+
+			if (color != null)
+			{
+				// Passes allowInherit so an external change (eg. collaborator
+				// edit) does not drop the Inherit button while the window is open
+				this.colorDialog.setColor(color, this.currentDefaultColor,
+					this.currentDefaultColorValue, this.currentSingleColorMode,
+					this.currentAllowInherit);
+			}
+		}
+	});
+
+	graph.getSelectionModel().addListener(mxEvent.CHANGE, refreshColor);
+	graph.getModel().addListener(mxEvent.CHANGE, refreshColor);
+	editorUi.addListener('styleChanged', refreshColor);
+
+	// Saves the text selection if the in-place editor has the focus when the
+	// window is used, so that colors apply to text selected after opening it
+	mxEvent.addGestureListeners(this.window.div, mxUtils.bind(this, function()
+	{
+		if (document.activeElement == graph.cellEditor.textarea)
+		{
+			this.selState = graph.cellEditor.saveSelection();
+		}
+	}));
+
+	// The color dialog focuses its hex input when it opens and after each
+	// color change, and the key handler ignores keys from outside the diagram,
+	// so undo and redo shortcuts are routed here. Native undo is kept while a
+	// value is being typed, and while a label is being edited, where
+	// EditorUi.undo expects the focus in the in-place editor.
+	var typing = false;
+
+	mxEvent.addListener(this.window.div, 'focusin', function()
+	{
+		typing = false;
+	});
+
+	mxEvent.addListener(this.window.div, 'input', function(evt)
+	{
+		var source = mxEvent.getSource(evt);
+		typing = source.nodeName == 'INPUT' && source.type == 'text';
+	});
+
+	mxEvent.addListener(this.window.div, 'keydown', function(evt)
+	{
+		var keyHandler = editorUi.keyHandler;
+
+		// Same shortcuts as in EditorUi.createKeyHandler: Ctrl+Z for undo,
+		// Ctrl+Shift+Z and Ctrl+Y for redo (Cmd on macOS)
+		if (!typing && !graph.isEditing() && keyHandler != null &&
+			keyHandler.isEnabled() && keyHandler.isControlDown(evt) &&
+			!mxEvent.isAltDown(evt) && (evt.keyCode == 90 ||
+			(evt.keyCode == 89 && !mxEvent.isShiftDown(evt))) &&
+			(editorUi.dialogs == null || editorUi.dialogs.length == 0))
+		{
+			var action = editorUi.actions.get((evt.keyCode == 90 &&
+				!mxEvent.isShiftDown(evt)) ? 'undo' : 'redo');
+
+			if (action.isEnabled())
+			{
+				action.funct();
+			}
+
+			mxEvent.consume(evt);
+		}
+	});
+
+	editorUi.installResizeHandler(this, true);
+};
+
+/**
+ * Updates the color window state for a new color property.
+ */
+ColorWindow.prototype.update = function(color, applyFn, title,
+	defaultColor, defaultColorValue, singleColorMode, getColorFn, allowInherit)
+{
+	this.getColorFn = getColorFn || null;
+	this.currentDefaultColor = defaultColor;
+	this.currentDefaultColorValue = defaultColorValue;
+	this.currentSingleColorMode = singleColorMode;
+	this.currentAllowInherit = allowInherit;
+
+	this.window.setTitle(title);
+	this.colorDialog.setApplyFn(applyFn);
+	this.colorDialog.setColor(color, defaultColor, defaultColorValue, singleColorMode, allowInherit);
+	this.window.setVisible(true);
+	this.fitHeight();
+	this.colorDialog.init();
 };
 
 /**
@@ -373,49 +2087,226 @@ var AboutDialog = function(editorUi)
 };
 
 /**
+ * Constructs a simple textarea dialog.
+ */
+var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink, headerControl, applyKeepsOpen, previewFn)
+{
+	var initialValue = (value != null) ? value : '';
+	var applying = false;
+
+	var div = document.createElement('div');
+	div.style.display = 'flex';
+	div.style.flexDirection = 'column';
+	div.style.height = '100%';
+	div.style.boxSizing = 'border-box';
+	// the flex column never overflows (the textarea scrolls internally),
+	// so opt out of the .geDialog > :first-child scroll container — it
+	// clips the focus halo of the bottom-row controls
+	div.style.overflow = 'visible';
+
+	var textarea = document.createElement('textarea');
+	textarea.style.flex = '1';
+	textarea.style.minHeight = '0';
+	textarea.style.width = '100%';
+	textarea.style.boxSizing = 'border-box';
+	textarea.style.resize = 'none';
+	textarea.setAttribute('wrap', 'off');
+	textarea.setAttribute('spellcheck', 'false');
+	textarea.setAttribute('autocorrect', 'off');
+	textarea.setAttribute('autocomplete', 'off');
+	textarea.setAttribute('autocapitalize', 'off');
+	textarea.value = (value != null) ? value : '';
+	div.appendChild(textarea);
+
+	var buttons = document.createElement('div');
+	buttons.style.display = 'flex';
+	buttons.style.justifyContent = 'end';
+	buttons.style.alignItems = 'center';
+	buttons.style.marginTop = '14px';
+	buttons.style.flexShrink = '0';
+
+	if (helpLink != null && !editorUi.isOffline())
+	{
+		buttons.appendChild(editorUi.createHelpIcon(helpLink));
+	}
+
+	// Optional caller-supplied control (e.g. a select) placed left of the
+	// action buttons, matching the type dropdown in ParseDialog.
+	if (headerControl != null)
+	{
+		buttons.appendChild(headerControl);
+	}
+
+	// Optional preview of the current text (wired by the caller), keeping
+	// the dialog open and the text unapplied.
+	if (previewFn != null)
+	{
+		var previewBtn = mxUtils.button(mxResources.get('preview'), function(evt)
+		{
+			previewFn(textarea.value, evt);
+		});
+
+		previewBtn.className = 'geBtn';
+		buttons.appendChild(previewBtn);
+	}
+
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	{
+		editorUi.hideDialog();
+	});
+
+	cancelBtn.setAttribute('title', 'Escape');
+	cancelBtn.className = 'geBtn';
+
+	if (editorUi.editor.cancelFirst)
+	{
+		buttons.appendChild(cancelBtn);
+	}
+
+	var okBtn = mxUtils.button((buttonLabel != null) ?
+		buttonLabel : mxResources.get('apply'), function()
+	{
+		// applyKeepsOpen leaves the dialog open for an async fn that may
+		// fail (e.g. mermaid parsing) so the input isn't lost; the caller
+		// hides it via this.hide() once the apply succeeds, like the
+		// mermaid branch in ParseDialog.
+		if (applyKeepsOpen)
+		{
+			fn(textarea.value);
+
+			return;
+		}
+
+		// suppresses the unsaved-changes confirmation a caller may have
+		// wired into the dialog's onClose (see shouldConfirmClose)
+		applying = true;
+
+		try
+		{
+			editorUi.hideDialog();
+		}
+		finally
+		{
+			applying = false;
+		}
+
+		fn(textarea.value);
+	});
+
+	okBtn.setAttribute('title', 'Ctrl+Enter');
+	okBtn.className = 'geBtn gePrimaryBtn';
+	buttons.appendChild(okBtn);
+
+	mxEvent.addListener(textarea, 'keydown', function(e)
+	{
+		if (e.keyCode == 13 && mxEvent.isControlDown(e))
+		{
+			okBtn.click();
+		}
+	});
+
+	if (!editorUi.editor.cancelFirst)
+	{
+		buttons.appendChild(cancelBtn);
+	}
+
+	this.init = function()
+	{
+		textarea.focus();
+		textarea.scrollTop = 0;
+	};
+
+	/**
+	 * True when closing now would lose the user's edits: the text differs
+	 * from the initial value and the close wasn't triggered by Apply.
+	 * Callers use this from the dialog's onClose to show an
+	 * "all changes will be lost" confirmation.
+	 */
+	this.shouldConfirmClose = function()
+	{
+		return !applying && textarea.value != initialValue;
+	};
+
+	/**
+	 * Hides the dialog with the unsaved-changes confirmation suppressed.
+	 * Used with applyKeepsOpen: the caller closes the dialog once its
+	 * async apply has succeeded.
+	 */
+	this.hide = function()
+	{
+		applying = true;
+
+		try
+		{
+			editorUi.hideDialog();
+		}
+		finally
+		{
+			applying = false;
+		}
+	};
+
+	div.appendChild(buttons);
+	this.container = div;
+};
+
+/**
  * Constructs a new textarea dialog.
  */
 var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w, h,
-	addButtons, noHide, noWrap, applyTitle, helpLink, customButtons)
+	addButtons, noHide, noWrap, applyTitle, helpLink, customButtons, header)
 {
 	w = (w != null) ? w : 300;
 	h = (h != null) ? h : 120;
 	noHide = (noHide != null) ? noHide : false;
-	var row, td;
-	
-	var table = document.createElement('table');
-	var tbody = document.createElement('tbody');
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	td.style.width = '100px';
-	mxUtils.write(td, title);
-	
-	row.appendChild(td);
-	tbody.appendChild(row);
 
-	row = document.createElement('tr');
-	td = document.createElement('td');
+	var div = document.createElement('div');
+	div.style.display = 'flex';
+	div.style.flexDirection = 'column';
+	div.style.height = '100%';
+	div.style.boxSizing = 'border-box';
+
+	var top = document.createElement('div');
+	top.style.display = 'flex';
+	top.style.alignItems = 'center';
+	top.style.marginBottom = '8px';
+	top.style.flexShrink = '0';
+
+	var hd = document.createElement('h3');
+	mxUtils.write(hd, title);
+	hd.style.cssText = 'width:100%;text-align:center;margin:0';
+	top.appendChild(hd);
+
+	if (header != null)
+	{
+		top.appendChild(header);
+	}
+
+	div.appendChild(top);
 
 	var nameInput = document.createElement('textarea');
-	
+
 	if (noWrap)
 	{
 		nameInput.setAttribute('wrap', 'off');
 	}
-	
+	else
+	{
+		nameInput.style.wordBreak = 'break-all';
+	}
+
 	nameInput.setAttribute('spellcheck', 'false');
 	nameInput.setAttribute('autocorrect', 'off');
 	nameInput.setAttribute('autocomplete', 'off');
 	nameInput.setAttribute('autocapitalize', 'off');
-	
+
 	mxUtils.write(nameInput, url || '');
 	nameInput.style.resize = 'none';
-	nameInput.style.width = w + 'px';
-	nameInput.style.height = h + 'px';
-	
+	nameInput.style.flex = '1';
+	nameInput.style.minHeight = '0';
+	nameInput.style.width = '100%';
+	nameInput.style.boxSizing = 'border-box';
+
 	this.textarea = nameInput;
 
 	this.init = function()
@@ -424,66 +2315,67 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 		nameInput.scrollTop = 0;
 	};
 
-	td.appendChild(nameInput);
-	row.appendChild(td);
-	
-	tbody.appendChild(row);
+	div.appendChild(nameInput);
 
-	row = document.createElement('tr');
-	td = document.createElement('td');
-	td.style.paddingTop = '14px';
-	td.style.whiteSpace = 'nowrap';
-	td.setAttribute('align', 'right');
-	
-	if (helpLink != null)
+	var buttons = document.createElement('div');
+	buttons.style.display = 'flex';
+	buttons.style.whiteSpace = 'nowrap';
+	buttons.style.alignItems = 'center';
+	buttons.style.justifyContent = 'end';
+	buttons.style.marginTop = '14px';
+	buttons.style.flexShrink = '0';
+
+	if (helpLink != null && !editorUi.isOffline())
 	{
-		var helpBtn = mxUtils.button(mxResources.get('help'), function()
-		{
-			editorUi.editor.graph.openLink(helpLink);
-		});
-		helpBtn.className = 'geBtn';
-		
-		td.appendChild(helpBtn);
+		buttons.appendChild(editorUi.createHelpIcon(helpLink));
 	}
-	
+
 	if (customButtons != null)
 	{
 		for (var i = 0; i < customButtons.length; i++)
 		{
-			(function(label, fn)
+			(function(label, fn, title)
 			{
 				var customBtn = mxUtils.button(label, function(e)
 				{
 					fn(e, nameInput);
 				});
+
+				if (title != null)
+				{
+					customBtn.setAttribute('title', title);
+				}
+
 				customBtn.className = 'geBtn';
-				
-				td.appendChild(customBtn);
-			})(customButtons[i][0], customButtons[i][1]);
+
+				buttons.appendChild(customBtn);
+			})(customButtons[i][0], customButtons[i][1], customButtons[i][2]);
 		}
 	}
-	
+
 	var cancelBtn = mxUtils.button(cancelTitle || mxResources.get('cancel'), function()
 	{
 		editorUi.hideDialog();
-		
+
 		if (cancelFn != null)
 		{
 			cancelFn();
 		}
 	});
+
+	cancelBtn.setAttribute('title', 'Escape');
 	cancelBtn.className = 'geBtn';
-	
+
 	if (editorUi.editor.cancelFirst)
 	{
-		td.appendChild(cancelBtn);
+		buttons.appendChild(cancelBtn);
 	}
-	
+
 	if (addButtons != null)
 	{
-		addButtons(td, nameInput);
+		addButtons(buttons, nameInput);
 	}
-	
+
 	if (fn != null)
 	{
 		var genericBtn = mxUtils.button(applyTitle || mxResources.get('apply'), function()
@@ -492,23 +2384,512 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 			{
 				editorUi.hideDialog();
 			}
-			
+
 			fn(nameInput.value);
 		});
-		
-		genericBtn.className = 'geBtn gePrimaryBtn';	
-		td.appendChild(genericBtn);
-	}
-	
-	if (!editorUi.editor.cancelFirst)
-	{
-		td.appendChild(cancelBtn);
+
+		genericBtn.setAttribute('title', 'Ctrl+Enter');
+		genericBtn.className = 'geBtn gePrimaryBtn';
+		buttons.appendChild(genericBtn);
+
+		mxEvent.addListener(nameInput, 'keydown', function(e)
+		{
+			if (e.keyCode == 13 && mxEvent.isControlDown(e))
+			{
+				genericBtn.click();
+			}
+		});
 	}
 
-	row.appendChild(td);
-	tbody.appendChild(row);
-	table.appendChild(tbody);
-	this.container = table;
+	if (!editorUi.editor.cancelFirst)
+	{
+		buttons.appendChild(cancelBtn);
+	}
+
+	div.appendChild(buttons);
+	this.container = div;
+};
+
+/**
+ * Constructs a small WYSIWYG HTML editor dialog with a formatting
+ * toolbar and a source view. Used for tooltips and notes where plain
+ * HTML is the established format.
+ */
+var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
+{
+	var div = document.createElement('div');
+	div.style.display = 'flex';
+	div.style.flexDirection = 'column';
+	div.style.height = '100%';
+	div.style.boxSizing = 'border-box';
+
+	var hd = document.createElement('h3');
+	mxUtils.write(hd, title);
+	div.appendChild(hd);
+
+	// Formatting toolbar
+	var toolbar = document.createElement('div');
+	toolbar.className = 'geMarkupToolbar';
+	div.appendChild(toolbar);
+
+	// Source view, hidden behind the WYSIWYG area initially
+	var textarea = document.createElement('textarea');
+	textarea.setAttribute('spellcheck', 'false');
+	textarea.setAttribute('autocorrect', 'off');
+	textarea.setAttribute('autocomplete', 'off');
+	textarea.setAttribute('autocapitalize', 'off');
+	textarea.style.overflow = 'auto';
+	textarea.style.resize = 'none';
+	textarea.style.flex = '1';
+	textarea.style.minHeight = '0';
+	textarea.style.width = '100%';
+	textarea.style.boxSizing = 'border-box';
+	textarea.style.display = 'none';
+	mxUtils.write(textarea, value || '');
+	div.appendChild(textarea);
+
+	this.textarea = textarea;
+
+	// WYSIWYG editing area shares the note box content styles
+	Graph.installNoteBoxStyle();
+	var wysiwyg = document.createElement('div');
+	wysiwyg.className = 'geNoteBox geMarkupWysiwyg';
+	wysiwyg.setAttribute('contenteditable', 'true');
+	wysiwyg.setAttribute('spellcheck', 'false');
+	wysiwyg.style.flex = '1';
+	wysiwyg.style.minHeight = '0';
+	div.appendChild(wysiwyg);
+
+	var sourceVisible = false;
+
+	// Style elements apply to the whole document while editing
+	function sourceToWysiwyg()
+	{
+		wysiwyg.innerHTML = Graph.disableHtmlStyles(Graph.sanitizeHtml(
+			textarea.value), Graph.backupCssAttribute);
+	};
+
+	function wysiwygToSource()
+	{
+		return Graph.sanitizeHtml(Graph.getHtmlWithStyleElements(
+			wysiwyg, Graph.backupCssAttribute));
+	};
+
+	function getValue()
+	{
+		return (sourceVisible) ? textarea.value : wysiwygToSource();
+	};
+
+	sourceToWysiwyg();
+
+	// Pastes as plain text
+	mxEvent.addListener(wysiwyg, 'paste', function(evt)
+	{
+		if (evt.clipboardData != null)
+		{
+			var text = evt.clipboardData.getData('text/plain');
+			evt.preventDefault();
+
+			if (text != null && text.length > 0)
+			{
+				document.execCommand('insertText', false, text);
+			}
+		}
+	});
+
+	// Wraps the selection with the given markup or, in block mode, wraps
+	// the selected lines with prefix/suffix and the whole block with the
+	// given container markup
+	function applyFormat(prefix, suffix, block, containerStart, containerEnd)
+	{
+		var start = textarea.selectionStart;
+		var end = textarea.selectionEnd;
+		var text = textarea.value;
+		suffix = (suffix != null) ? suffix : '';
+
+		if (block)
+		{
+			// Expands the selection to whole lines
+			while (start > 0 && text.charAt(start - 1) != '\n')
+			{
+				start--;
+			}
+
+			while (end < text.length && text.charAt(end) != '\n')
+			{
+				end++;
+			}
+
+			var lines = text.substring(start, end).split('\n');
+
+			for (var i = 0; i < lines.length; i++)
+			{
+				lines[i] = prefix.replace('{1}', i + 1) + lines[i] + suffix;
+			}
+
+			var replaced = lines.join('\n');
+
+			if (containerStart != null)
+			{
+				replaced = containerStart + '\n' + replaced + '\n' + containerEnd;
+			}
+
+			textarea.value = text.substring(0, start) + replaced + text.substring(end);
+			textarea.selectionStart = start;
+			textarea.selectionEnd = start + replaced.length;
+		}
+		else
+		{
+			var selected = text.substring(start, end);
+			textarea.value = text.substring(0, start) + prefix + selected +
+				suffix + text.substring(end);
+
+			if (selected.length == 0)
+			{
+				textarea.selectionStart = start + prefix.length;
+				textarea.selectionEnd = textarea.selectionStart;
+			}
+			else
+			{
+				textarea.selectionStart = start;
+				textarea.selectionEnd = end + prefix.length + suffix.length;
+			}
+		}
+
+		textarea.focus();
+	};
+
+	// Returns the selection range if it is inside the WYSIWYG area
+	function getRange()
+	{
+		var sel = window.getSelection();
+
+		if (sel != null && sel.rangeCount > 0)
+		{
+			var range = sel.getRangeAt(0);
+
+			if (mxUtils.isAncestorNode(wysiwyg, range.commonAncestorContainer))
+			{
+				return range;
+			}
+		}
+
+		return null;
+	};
+
+	function execCmd(cmd, arg)
+	{
+		wysiwyg.focus();
+		document.execCommand(cmd, false, (arg != null) ? arg : null);
+	};
+
+	function wrapInline(tag)
+	{
+		var range = getRange();
+
+		if (range != null && !range.collapsed)
+		{
+			var node = document.createElement(tag);
+
+			try
+			{
+				range.surroundContents(node);
+			}
+			catch (e)
+			{
+				// Partial element selections cannot be surrounded
+				node.appendChild(range.extractContents());
+				range.insertNode(node);
+			}
+
+			var sel = window.getSelection();
+			sel.removeAllRanges();
+			range = document.createRange();
+			range.selectNodeContents(node);
+			sel.addRange(range);
+		}
+
+		wysiwyg.focus();
+	};
+
+	function insertLink()
+	{
+		var range = getRange();
+		range = (range != null) ? range.cloneRange() : null;
+
+		var dlg = new FilenameDialog(editorUi, 'https://',
+			mxResources.get('apply'), function(href)
+		{
+			if (href != null && href.length > 0 && href != 'https://')
+			{
+				wysiwyg.focus();
+
+				if (range != null)
+				{
+					var sel = window.getSelection();
+					sel.removeAllRanges();
+					sel.addRange(range);
+				}
+
+				if (range != null && !range.collapsed)
+				{
+					document.execCommand('createLink', false, href);
+				}
+				else
+				{
+					var temp = mxUtils.htmlEntities(href);
+					document.execCommand('insertHTML', false,
+						'<a href="' + temp + '">' + temp + '</a>');
+				}
+			}
+		}, mxResources.get('link'));
+
+		editorUi.showDialog(dlg.container, 340, 96, true, true);
+		dlg.init();
+	};
+
+	function addFormatButton(html, title, fn)
+	{
+		// Not a geButton as those are inverted in dark mode which would
+		// cancel out the light-dark colors of the button styles
+		var btn = document.createElement('a');
+		btn.className = 'geMarkupTbBtn';
+		btn.innerHTML = html;
+		btn.setAttribute('title', title);
+
+		// Keeps the focus and selection in the editing area
+		mxEvent.addListener(btn, 'mousedown', function(evt)
+		{
+			evt.preventDefault();
+		});
+
+		mxEvent.addListener(btn, 'click', function(evt)
+		{
+			fn();
+			evt.preventDefault();
+			mxEvent.consume(evt);
+		});
+
+		toolbar.appendChild(btn);
+
+		return btn;
+	};
+
+	addFormatButton('<b>B</b>', mxResources.get('bold'), function()
+	{
+		if (sourceVisible)
+		{
+			applyFormat('<b>', '</b>');
+		}
+		else
+		{
+			execCmd('bold');
+		}
+	});
+	addFormatButton('<i>I</i>', mxResources.get('italic'), function()
+	{
+		if (sourceVisible)
+		{
+			applyFormat('<i>', '</i>');
+		}
+		else
+		{
+			execCmd('italic');
+		}
+	});
+	addFormatButton('<s>S</s>', mxResources.get('strikethrough'), function()
+	{
+		if (sourceVisible)
+		{
+			applyFormat('<s>', '</s>');
+		}
+		else
+		{
+			execCmd('strikeThrough');
+		}
+	});
+	addFormatButton('&lt;/&gt;', mxResources.get('code'), function()
+	{
+		if (sourceVisible)
+		{
+			applyFormat('<code>', '</code>');
+		}
+		else
+		{
+			wrapInline('code');
+		}
+	});
+	addFormatButton('<u>a</u>', mxResources.get('link'), function()
+	{
+		if (sourceVisible)
+		{
+			var start = textarea.selectionStart;
+			var end = textarea.selectionEnd;
+			var selected = textarea.value.substring(start, end);
+			var label = (selected.length > 0) ? selected : mxResources.get('link');
+			var prefix = '<a href="';
+			var suffix = '">' + label + '</a>';
+			textarea.value = textarea.value.substring(0, start) + prefix +
+				'https://' + suffix + textarea.value.substring(end);
+			textarea.selectionStart = start + prefix.length;
+			textarea.selectionEnd = textarea.selectionStart + 8;
+			textarea.focus();
+		}
+		else
+		{
+			insertLink();
+		}
+	});
+	addFormatButton('H', mxResources.get('heading'), function()
+	{
+		if (sourceVisible)
+		{
+			applyFormat('<h1>', '</h1>', true);
+		}
+		else
+		{
+			var block = null;
+
+			try
+			{
+				block = String(document.queryCommandValue('formatBlock')).toLowerCase();
+			}
+			catch (e)
+			{
+				// ignored
+			}
+
+			execCmd('formatBlock', (block == 'h1') ? '<div>' : '<h1>');
+		}
+	});
+	addFormatButton('&bull;&ndash;', mxResources.get('bulletedList'), function()
+	{
+		if (sourceVisible)
+		{
+			applyFormat('<li>', '</li>', true, '<ul>', '</ul>');
+		}
+		else
+		{
+			execCmd('insertUnorderedList');
+		}
+	});
+	addFormatButton('1.', mxResources.get('numberedList'), function()
+	{
+		if (sourceVisible)
+		{
+			applyFormat('<li>', '</li>', true, '<ol>', '</ol>');
+		}
+		else
+		{
+			execCmd('insertOrderedList');
+		}
+	});
+
+	// Source view toggle on the right of the toolbar
+	var sourceBtn = document.createElement('a');
+	sourceBtn.className = 'geMarkupTbBtn geMarkupSourceBtn';
+	mxUtils.write(sourceBtn, mxResources.get('html'));
+
+	mxEvent.addListener(sourceBtn, 'click', function(evt)
+	{
+		if (!sourceVisible)
+		{
+			textarea.value = wysiwygToSource();
+			sourceBtn.classList.add('geActiveItem');
+		}
+		else
+		{
+			sourceToWysiwyg();
+			sourceBtn.classList.remove('geActiveItem');
+		}
+
+		sourceVisible = !sourceVisible;
+		textarea.style.display = (sourceVisible) ? '' : 'none';
+		wysiwyg.style.display = (sourceVisible) ? 'none' : '';
+		((sourceVisible) ? textarea : wysiwyg).focus();
+
+		evt.preventDefault();
+		mxEvent.consume(evt);
+	});
+
+	toolbar.appendChild(sourceBtn);
+
+	this.init = function()
+	{
+		try
+		{
+			// Semantic tags instead of styled spans for editing commands
+			document.execCommand('styleWithCSS', false, false);
+		}
+		catch (e)
+		{
+			// ignored
+		}
+
+		wysiwyg.focus();
+	};
+
+	var buttons = document.createElement('div');
+	buttons.style.display = 'flex';
+	buttons.style.whiteSpace = 'nowrap';
+	buttons.style.alignItems = 'center';
+	buttons.style.justifyContent = 'end';
+	buttons.style.marginTop = '14px';
+	buttons.style.flexShrink = '0';
+
+	if (helpLink != null && !editorUi.isOffline())
+	{
+		buttons.appendChild(editorUi.createHelpIcon(helpLink));
+	}
+
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	{
+		editorUi.hideDialog();
+
+		if (cancelFn != null)
+		{
+			cancelFn();
+		}
+	});
+
+	cancelBtn.setAttribute('title', 'Escape');
+	cancelBtn.className = 'geBtn';
+
+	if (editorUi.editor.cancelFirst)
+	{
+		buttons.appendChild(cancelBtn);
+	}
+
+	var applyBtn = mxUtils.button(mxResources.get('apply'), function()
+	{
+		var newValue = getValue();
+		editorUi.hideDialog();
+		fn(newValue);
+	});
+
+	applyBtn.setAttribute('title', 'Ctrl+Enter');
+	applyBtn.className = 'geBtn gePrimaryBtn';
+	buttons.appendChild(applyBtn);
+
+	function keyHandler(e)
+	{
+		if (e.keyCode == 13 && mxEvent.isControlDown(e))
+		{
+			e.preventDefault();
+			applyBtn.click();
+		}
+	};
+
+	mxEvent.addListener(textarea, 'keydown', keyHandler);
+	mxEvent.addListener(wysiwyg, 'keydown', keyHandler);
+
+	if (!editorUi.editor.cancelFirst)
+	{
+		buttons.appendChild(cancelBtn);
+	}
+
+	div.appendChild(buttons);
+	this.container = div;
 };
 
 /**
@@ -517,7 +2898,15 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 var EditDiagramDialog = function(editorUi)
 {
 	var div = document.createElement('div');
-	div.style.textAlign = 'right';
+	div.style.display = 'flex';
+	div.style.flexDirection = 'column';
+	div.style.height = '100%';
+	div.style.boxSizing = 'border-box';
+
+	var hd = document.createElement('h3');
+	mxUtils.write(hd, mxResources.get('editDiagram'));
+	div.appendChild(hd);
+
 	var textarea = document.createElement('textarea');
 	textarea.setAttribute('wrap', 'off');
 	textarea.setAttribute('spellcheck', 'false');
@@ -526,44 +2915,46 @@ var EditDiagramDialog = function(editorUi)
 	textarea.setAttribute('autocapitalize', 'off');
 	textarea.style.overflow = 'auto';
 	textarea.style.resize = 'none';
-	textarea.style.width = '600px';
-	textarea.style.height = '360px';
-	textarea.style.marginBottom = '16px';
-	
-	textarea.value = mxUtils.getPrettyXml(editorUi.editor.getGraphXml());
+	textarea.style.flex = '1';
+	textarea.style.minHeight = '0';
+	textarea.style.width = '100%';
+	textarea.style.boxSizing = 'border-box';
+
+	var snapshot = editorUi.getDiagramSnapshot();
+	textarea.value = mxUtils.getPrettyXml(snapshot.node);
 	div.appendChild(textarea);
-	
+
 	this.init = function()
 	{
 		textarea.focus();
 	};
-	
+
 	// Enables dropping files
 	if (Graph.fileSupport)
 	{
 		function handleDrop(evt)
 		{
-		    evt.stopPropagation();
-		    evt.preventDefault();
-		    
-		    if (evt.dataTransfer.files.length > 0)
-		    {
-    			var file = evt.dataTransfer.files[0];
-    			var reader = new FileReader();
-				
+			evt.stopPropagation();
+			evt.preventDefault();
+
+			if (evt.dataTransfer.files.length > 0)
+			{
+				var file = evt.dataTransfer.files[0];
+				var reader = new FileReader();
+
 				reader.onload = function(e)
 				{
 					textarea.value = e.target.result;
 				};
-				
+
 				reader.readAsText(file);
-    		}
-		    else
-		    {
-		    	textarea.value = editorUi.extractGraphModelFromEvent(evt);
-		    }
+			}
+			else
+			{
+				textarea.value = editorUi.extractGraphModelFromEvent(evt);
+			}
 		};
-		
+
 		function handleDragOver(evt)
 		{
 			evt.stopPropagation();
@@ -574,117 +2965,197 @@ var EditDiagramDialog = function(editorUi)
 		textarea.addEventListener('dragover', handleDragOver, false);
 		textarea.addEventListener('drop', handleDrop, false);
 	}
-	
+
+	var buttons = document.createElement('div');
+	buttons.style.display = 'flex';
+	buttons.style.whiteSpace = 'nowrap';
+	buttons.style.alignItems = 'center';
+	buttons.style.justifyContent = 'end';
+	buttons.style.marginTop = '14px';
+	buttons.style.flexShrink = '0';
+
+	if (!editorUi.isOffline())
+	{
+		var helpIcon = editorUi.createHelpIcon(EditDiagramDialog.helpLink);
+		helpIcon.style.marginRight = 'auto';
+		buttons.appendChild(helpIcon);
+	}
+
 	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 	{
 		editorUi.hideDialog();
 	});
+
+	cancelBtn.setAttribute('title', 'Escape');
 	cancelBtn.className = 'geBtn';
-	
+
 	if (editorUi.editor.cancelFirst)
 	{
-		div.appendChild(cancelBtn);
+		buttons.appendChild(cancelBtn);
 	}
-	
-	var select = document.createElement('select');
-	select.style.width = '180px';
-	select.className = 'geBtn';
 
-	if (editorUi.editor.graph.isEnabled())
+	var select = document.createElement('select');
+	select.style.textOverflow = 'ellipsis';
+	select.style.marginLeft = '8px';
+	select.style.height = '30px';
+	select.style.width = '196px';
+
+	var placeholderOption = document.createElement('option');
+	placeholderOption.setAttribute('value', '');
+	placeholderOption.setAttribute('disabled', 'disabled');
+	placeholderOption.setAttribute('selected', 'selected');
+	mxUtils.write(placeholderOption, mxResources.get('select') + '...');
+	select.appendChild(placeholderOption);
+
+	// The clipboard API is missing in insecure contexts, eg. embeds in pages
+	// served over http
+	if (navigator.clipboard != null && navigator.clipboard.writeText != null)
 	{
-		var replaceOption = document.createElement('option');
-		replaceOption.setAttribute('value', 'replace');
-		mxUtils.write(replaceOption, mxResources.get('replaceExistingDrawing'));
-		select.appendChild(replaceOption);
+		var copyOption = document.createElement('option');
+		copyOption.setAttribute('value', 'copy');
+		mxUtils.write(copyOption, mxResources.get('copyDiagramToClipboard'));
+		select.appendChild(copyOption);
 	}
 
 	var newOption = document.createElement('option');
 	newOption.setAttribute('value', 'new');
 	mxUtils.write(newOption, mxResources.get('openInNewWindow'));
-	
-	if (EditDiagramDialog.showNewWindowOption)
+
+	if (EditDiagramDialog.showNewWindowOption && !navigator.standalone)
 	{
 		select.appendChild(newOption);
 	}
 
-	if (editorUi.editor.graph.isEnabled())
+	var extractTextAction = editorUi.actions.get('extractText');
+	var hasExtractText = extractTextAction != null;
+	var hasAnonymize = typeof editorUi.anonymizeXml == 'function';
+
+	if (hasExtractText)
 	{
-		var importOption = document.createElement('option');
-		importOption.setAttribute('value', 'import');
-		mxUtils.write(importOption, mxResources.get('addToExistingDrawing'));
-		select.appendChild(importOption);
+		var extractOption = document.createElement('option');
+		extractOption.setAttribute('value', 'extractText');
+		mxUtils.write(extractOption, mxResources.get('extractText'));
+		select.appendChild(extractOption);
 	}
 
-	div.appendChild(select);
-
-	var okBtn = mxUtils.button(mxResources.get('ok'), function()
+	if (hasAnonymize)
 	{
+		var anonymizeOption = document.createElement('option');
+		anonymizeOption.setAttribute('value', 'anonymize');
+		mxUtils.write(anonymizeOption, mxResources.get('anonymize'));
+		select.appendChild(anonymizeOption);
+	}
+
+	mxEvent.addListener(select, 'change', function()
+	{
+		var value = select.value;
 		// Removes all illegal control characters before parsing
 		var data = Graph.zapGremlins(mxUtils.trim(textarea.value));
 		var error = null;
-		
-		if (select.value == 'new')
+
+		if (value == 'new')
 		{
 			editorUi.hideDialog();
 			editorUi.editor.editAsNew(data);
 		}
-		else if (select.value == 'replace')
+		else if (value == 'copy')
 		{
-			editorUi.editor.graph.model.beginUpdate();
+			editorUi.writeTextToClipboard(data, function(e)
+			{
+				editorUi.handleError(e);
+			}, function()
+			{
+				editorUi.alert(mxResources.get('copiedToClipboard'));
+			});
+		}
+		else if (value == 'extractText')
+		{
+			extractTextAction.funct(true);
+		}
+		else if (value == 'anonymize')
+		{
 			try
 			{
-				editorUi.editor.setGraphXml(mxUtils.parseXml(data).documentElement);
-				// LATER: Why is hideDialog between begin-/endUpdate faster?
-				editorUi.hideDialog();
+				textarea.value = editorUi.anonymizeXml(data);
 			}
 			catch (e)
 			{
 				error = e;
 			}
-			finally
-			{
-				editorUi.editor.graph.model.endUpdate();				
-			}
 		}
-		else if (select.value == 'import')
-		{
-			editorUi.editor.graph.model.beginUpdate();
-			try
-			{
-				var doc = mxUtils.parseXml(data);
-				var model = new mxGraphModel();
-				var codec = new mxCodec(doc);
-				codec.decode(doc.documentElement, model);
-				
-				var children = model.getChildren(model.getChildAt(model.getRoot(), 0));
-				editorUi.editor.graph.setSelectionCells(editorUi.editor.graph.importCells(children));
-				
-				// LATER: Why is hideDialog between begin-/endUpdate faster?
-				editorUi.hideDialog();
-			}
-			catch (e)
-			{
-				error = e;
-			}
-			finally
-			{
-				editorUi.editor.graph.model.endUpdate();				
-			}
-		}
-			
+
+		select.value = '';
+
 		if (error != null)
 		{
-			mxUtils.alert(error.message);
+			editorUi.handleError(error);
 		}
 	});
-	okBtn.className = 'geBtn gePrimaryBtn';
-	div.appendChild(okBtn);
-	
-	if (!editorUi.editor.cancelFirst)
+
+	buttons.appendChild(select);
+
+	if (editorUi.editor.graph.isEnabled())
 	{
-		div.appendChild(cancelBtn);
+		var applyBtn = mxUtils.button(mxResources.get('apply'), function()
+		{
+			// Removes all illegal control characters before parsing
+			var data = Graph.zapGremlins(mxUtils.trim(textarea.value));
+			var error = null;
+
+			try
+			{
+				var node = mxUtils.parseXml(data).documentElement;
+				var cause = Editor.extractParserError(node, mxResources.get('unknownError'));
+
+				if (cause)
+				{
+					EditorUi.debug('EditDiagramDialogParserError', [this],
+						'node', [node], 'cause', [cause]);
+					error = mxResources.get('invalidInput') + ' (' + cause + ')';
+				}
+				else
+				{
+					if (node.nodeName == 'mxfile')
+					{
+						editorUi.editor.setGraphXml(node);
+					}
+					else
+					{
+						editorUi.updateDiagramData(snapshot, node);
+					}
+
+					editorUi.hideDialog();
+				}
+			}
+			catch (e)
+			{
+				error = e;
+			}
+
+			if (error != null)
+			{
+				editorUi.handleError(error);
+			}
+		});
+		applyBtn.setAttribute('title', 'Ctrl+Enter');
+		applyBtn.className = 'geBtn gePrimaryBtn';
+		buttons.appendChild(applyBtn);
+
+		mxEvent.addListener(textarea, 'keydown', function(e)
+		{
+			if (e.keyCode == 13 && mxEvent.isControlDown(e))
+			{
+				applyBtn.click();
+			}
+		});
 	}
 
+	if (!editorUi.editor.cancelFirst)
+	{
+		buttons.appendChild(cancelBtn);
+	}
+
+	div.appendChild(buttons);
 	this.container = div;
 };
 
@@ -692,6 +3163,11 @@ var EditDiagramDialog = function(editorUi)
  * 
  */
 EditDiagramDialog.showNewWindowOption = true;
+
+/**
+ * URL for the user-facing documentation of this dialog.
+ */
+EditDiagramDialog.helpLink = 'https://www.drawio.com/docs/manual/advanced/diagram-source-edit/';
 
 /**
  * Constructs a new export dialog.
@@ -705,41 +3181,31 @@ var ExportDialog = function(editorUi)
 	var width = Math.ceil(bounds.width / scale);
 	var height = Math.ceil(bounds.height / scale);
 
-	var row, td;
-	
-	var table = document.createElement('table');
-	var tbody = document.createElement('tbody');
-	table.setAttribute('cellpadding', (mxClient.IS_SF) ? '0' : '2');
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	td.style.width = '100px';
-	mxUtils.write(td, mxResources.get('filename') + ':');
-	
-	row.appendChild(td);
-	
-	var nameInput = document.createElement('input');
-	nameInput.setAttribute('value', editorUi.editor.getOrCreateFilename());
-	nameInput.style.width = '180px';
+	var container = document.createElement('div');
 
-	td = document.createElement('td');
-	td.appendChild(nameInput);
-	row.appendChild(td);
-	
-	tbody.appendChild(row);
-		
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	mxUtils.write(td, mxResources.get('format') + ':');
-	
-	row.appendChild(td);
-	
+	// --- File section ---
+	var section = document.createElement('div');
+	section.className = 'geDialogSection';
+
+	var formRow = document.createElement('div');
+	formRow.className = 'geDialogFormRow';
+	var lbl = document.createElement('span');
+	lbl.className = 'geDialogFormLabel';
+	mxUtils.write(lbl, mxResources.get('filename') + ':');
+	formRow.appendChild(lbl);
+	var nameInput = document.createElement('input');
+	nameInput.setAttribute('type', 'text');
+	nameInput.setAttribute('value', editorUi.editor.getOrCreateFilename());
+	formRow.appendChild(nameInput);
+	section.appendChild(formRow);
+
+	formRow = document.createElement('div');
+	formRow.className = 'geDialogFormRow';
+	lbl = document.createElement('span');
+	lbl.className = 'geDialogFormLabel';
+	mxUtils.write(lbl, mxResources.get('format') + ':');
+	formRow.appendChild(lbl);
 	var imageFormatSelect = document.createElement('select');
-	imageFormatSelect.style.width = '180px';
 
 	var pngOption = document.createElement('option');
 	pngOption.setAttribute('value', 'png');
@@ -747,29 +3213,24 @@ var ExportDialog = function(editorUi)
 	imageFormatSelect.appendChild(pngOption);
 
 	var gifOption = document.createElement('option');
-	
+
 	if (ExportDialog.showGifOption)
 	{
 		gifOption.setAttribute('value', 'gif');
 		mxUtils.write(gifOption, mxResources.get('formatGif'));
 		imageFormatSelect.appendChild(gifOption);
 	}
-	
+
 	var jpgOption = document.createElement('option');
 	jpgOption.setAttribute('value', 'jpg');
 	mxUtils.write(jpgOption, mxResources.get('formatJpg'));
 	imageFormatSelect.appendChild(jpgOption);
 
-	var pdfOption = document.createElement('option');
-	pdfOption.setAttribute('value', 'pdf');
-	mxUtils.write(pdfOption, mxResources.get('formatPdf'));
-	imageFormatSelect.appendChild(pdfOption);
-	
 	var svgOption = document.createElement('option');
 	svgOption.setAttribute('value', 'svg');
 	mxUtils.write(svgOption, mxResources.get('formatSvg'));
 	imageFormatSelect.appendChild(svgOption);
-	
+
 	if (ExportDialog.showXmlOption)
 	{
 		var xmlOption = document.createElement('option');
@@ -778,77 +3239,60 @@ var ExportDialog = function(editorUi)
 		imageFormatSelect.appendChild(xmlOption);
 	}
 
-	td = document.createElement('td');
-	td.appendChild(imageFormatSelect);
-	row.appendChild(td);
-	
-	tbody.appendChild(row);
-	
-	row = document.createElement('tr');
+	formRow.appendChild(imageFormatSelect);
+	section.appendChild(formRow);
+	container.appendChild(section);
 
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	mxUtils.write(td, mxResources.get('zoom') + ' (%):');
-	
-	row.appendChild(td);
-	
+	// --- Size section ---
+	section = document.createElement('div');
+	section.className = 'geDialogSection';
+
+	formRow = document.createElement('div');
+	formRow.className = 'geDialogFormRow';
+	lbl = document.createElement('span');
+	lbl.className = 'geDialogFormLabel';
+	mxUtils.write(lbl, mxResources.get('zoom') + ' (%):');
+	formRow.appendChild(lbl);
 	var zoomInput = document.createElement('input');
 	zoomInput.setAttribute('type', 'number');
 	zoomInput.setAttribute('value', '100');
-	zoomInput.style.width = '180px';
+	formRow.appendChild(zoomInput);
+	section.appendChild(formRow);
 
-	td = document.createElement('td');
-	td.appendChild(zoomInput);
-	row.appendChild(td);
+	var inlineRow = document.createElement('div');
+	inlineRow.className = 'geDialogInlineFields';
+	inlineRow.style.marginTop = '6px';
 
-	tbody.appendChild(row);
-
-	row = document.createElement('tr');
-
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	mxUtils.write(td, mxResources.get('width') + ':');
-	
-	row.appendChild(td);
-	
+	var field = document.createElement('div');
+	field.className = 'geDialogInlineField';
+	lbl = document.createElement('label');
+	mxUtils.write(lbl, mxResources.get('width') + ':');
+	field.appendChild(lbl);
 	var widthInput = document.createElement('input');
+	widthInput.setAttribute('type', 'number');
 	widthInput.setAttribute('value', width);
-	widthInput.style.width = '180px';
+	field.appendChild(widthInput);
+	inlineRow.appendChild(field);
 
-	td = document.createElement('td');
-	td.appendChild(widthInput);
-	row.appendChild(td);
-
-	tbody.appendChild(row);
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	mxUtils.write(td, mxResources.get('height') + ':');
-	
-	row.appendChild(td);
-	
+	field = document.createElement('div');
+	field.className = 'geDialogInlineField';
+	lbl = document.createElement('label');
+	mxUtils.write(lbl, mxResources.get('height') + ':');
+	field.appendChild(lbl);
 	var heightInput = document.createElement('input');
+	heightInput.setAttribute('type', 'number');
 	heightInput.setAttribute('value', height);
-	heightInput.style.width = '180px';
+	field.appendChild(heightInput);
+	inlineRow.appendChild(field);
+	section.appendChild(inlineRow);
 
-	td = document.createElement('td');
-	td.appendChild(heightInput);
-	row.appendChild(td);
-
-	tbody.appendChild(row);
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	mxUtils.write(td, mxResources.get('dpi') + ':');
-	
-	row.appendChild(td);
-	
+	formRow = document.createElement('div');
+	formRow.className = 'geDialogFormRow';
+	lbl = document.createElement('span');
+	lbl.className = 'geDialogFormLabel';
+	mxUtils.write(lbl, mxResources.get('dpi') + ':');
+	formRow.appendChild(lbl);
 	var dpiSelect = document.createElement('select');
-	dpiSelect.style.width = '180px';
 
 	var dpi100Option = document.createElement('option');
 	dpi100Option.setAttribute('value', '100');
@@ -859,29 +3303,37 @@ var ExportDialog = function(editorUi)
 	dpi200Option.setAttribute('value', '200');
 	mxUtils.write(dpi200Option, '200dpi');
 	dpiSelect.appendChild(dpi200Option);
-	
+
 	var dpi300Option = document.createElement('option');
 	dpi300Option.setAttribute('value', '300');
 	mxUtils.write(dpi300Option, '300dpi');
 	dpiSelect.appendChild(dpi300Option);
-	
+
 	var dpi400Option = document.createElement('option');
 	dpi400Option.setAttribute('value', '400');
 	mxUtils.write(dpi400Option, '400dpi');
 	dpiSelect.appendChild(dpi400Option);
-	
+
 	var dpiCustOption = document.createElement('option');
 	dpiCustOption.setAttribute('value', 'custom');
 	mxUtils.write(dpiCustOption, mxResources.get('custom'));
 	dpiSelect.appendChild(dpiCustOption);
 
 	var customDpi = document.createElement('input');
-	customDpi.style.width = '180px';
 	customDpi.style.display = 'none';
 	customDpi.setAttribute('value', '100');
 	customDpi.setAttribute('type', 'number');
 	customDpi.setAttribute('min', '50');
 	customDpi.setAttribute('step', '50');
+
+	formRow.appendChild(dpiSelect);
+	formRow.appendChild(customDpi);
+	section.appendChild(formRow);
+	container.appendChild(section);
+
+	// Options section (populated after DPI handlers below)
+	var optSection = document.createElement('div');
+	optSection.className = 'geDialogSection';
 	
 	var zoomUserChanged = false;
 	
@@ -923,71 +3375,40 @@ var ExportDialog = function(editorUi)
 		}	
 	});
 	
-	td = document.createElement('td');
-	td.appendChild(dpiSelect);
-	td.appendChild(customDpi);
-	row.appendChild(td);
-
-	tbody.appendChild(row);
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	mxUtils.write(td, mxResources.get('background') + ':');
-	
-	row.appendChild(td);
-	
+	var checkRow = document.createElement('div');
+	checkRow.className = 'geDialogCheckRow';
 	var transparentCheckbox = document.createElement('input');
 	transparentCheckbox.setAttribute('type', 'checkbox');
 	transparentCheckbox.checked = graph.background == null || graph.background == mxConstants.NONE;
+	checkRow.appendChild(transparentCheckbox);
+	lbl = document.createElement('label');
+	mxUtils.write(lbl, mxResources.get('transparent'));
+	checkRow.appendChild(lbl);
+	optSection.appendChild(checkRow);
 
-	td = document.createElement('td');
-	td.appendChild(transparentCheckbox);
-	mxUtils.write(td, mxResources.get('transparent'));
-	
-	row.appendChild(td);
-	
-	tbody.appendChild(row);
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	mxUtils.write(td, mxResources.get('grid') + ':');
-	
-	row.appendChild(td);
-	
+	checkRow = document.createElement('div');
+	checkRow.className = 'geDialogCheckRow';
 	var gridCheckbox = document.createElement('input');
 	gridCheckbox.setAttribute('type', 'checkbox');
 	gridCheckbox.checked = false;
+	checkRow.appendChild(gridCheckbox);
+	lbl = document.createElement('label');
+	mxUtils.write(lbl, mxResources.get('grid'));
+	checkRow.appendChild(lbl);
+	optSection.appendChild(checkRow);
 
-	td = document.createElement('td');
-	td.appendChild(gridCheckbox);
-	
-	row.appendChild(td);
-	
-	tbody.appendChild(row);
-	
-	row = document.createElement('tr');
-
-	td = document.createElement('td');
-	td.style.fontSize = '10pt';
-	mxUtils.write(td, mxResources.get('borderWidth') + ':');
-	
-	row.appendChild(td);
-	
+	formRow = document.createElement('div');
+	formRow.className = 'geDialogFormRow';
+	lbl = document.createElement('span');
+	lbl.className = 'geDialogFormLabel';
+	mxUtils.write(lbl, mxResources.get('borderWidth') + ':');
+	formRow.appendChild(lbl);
 	var borderInput = document.createElement('input');
 	borderInput.setAttribute('type', 'number');
 	borderInput.setAttribute('value', ExportDialog.lastBorderValue);
-	borderInput.style.width = '180px';
-
-	td = document.createElement('td');
-	td.appendChild(borderInput);
-	row.appendChild(td);
-
-	tbody.appendChild(row);
-	table.appendChild(tbody);
+	formRow.appendChild(borderInput);
+	optSection.appendChild(formRow);
+	container.appendChild(optSection);
 	
 	// Handles changes in the export format
 	function formatChanged()
@@ -1132,12 +3553,10 @@ var ExportDialog = function(editorUi)
 		checkValues();
 	});
 	
-	row = document.createElement('tr');
-	td = document.createElement('td');
-	td.setAttribute('align', 'right');
-	td.style.paddingTop = '22px';
-	td.colSpan = 2;
-	
+	var btnRow = document.createElement('div');
+	btnRow.style.textAlign = 'right';
+	btnRow.style.paddingTop = '16px';
+
 	var saveBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function()
 	{
 		if (parseInt(zoomInput.value) <= 0)
@@ -1152,7 +3571,7 @@ var ExportDialog = function(editorUi)
 			var b = Math.max(0, parseInt(borderInput.value));
 			var bg = graph.background;
 			var dpi = Math.max(1, parseInt(customDpi.value));
-			
+
 			if ((format == 'svg' || format == 'png' || format == 'pdf') && transparentCheckbox.checked)
 			{
 				bg = null;
@@ -1161,34 +3580,32 @@ var ExportDialog = function(editorUi)
 			{
 				bg = '#ffffff';
 			}
-			
+
 			ExportDialog.lastBorderValue = b;
 			ExportDialog.exportFile(editorUi, name, format, bg, s, b, dpi, gridCheckbox.checked);
 		}
 	}));
 	saveBtn.className = 'geBtn gePrimaryBtn';
-	
+
 	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 	{
 		editorUi.hideDialog();
 	});
 	cancelBtn.className = 'geBtn';
-	
+
 	if (editorUi.editor.cancelFirst)
 	{
-		td.appendChild(cancelBtn);
-		td.appendChild(saveBtn);
+		btnRow.appendChild(cancelBtn);
+		btnRow.appendChild(saveBtn);
 	}
 	else
 	{
-		td.appendChild(saveBtn);
-		td.appendChild(cancelBtn);
+		btnRow.appendChild(saveBtn);
+		btnRow.appendChild(cancelBtn);
 	}
 
-	row.appendChild(td);
-	tbody.appendChild(row);
-	table.appendChild(tbody);
-	this.container = table;
+	container.appendChild(btnRow);
+	this.container = container;
 };
 
 /**
@@ -1290,28 +3707,47 @@ ExportDialog.saveLocalFile = function(editorUi, data, filename, format)
 /**
  * Constructs a new metadata dialog.
  */
-var EditDataDialog = function(ui, cell)
+var EditDataDialog = function(ui, cell, optionalGraph)
 {
-	var div = document.createElement('div');
-	var graph = ui.editor.graph;
-	
-	var value = graph.getModel().getValue(cell);
-	
-	// Converts the value to an XML node
-	if (!mxUtils.isNode(value))
+	var container = document.createElement('div');
+	container.style.display = 'flex';
+	container.style.flexDirection = 'column';
+	container.style.height = '100%';
+	var graph = optionalGraph || ui.editor.graph;
+
+	// Accepts an array of cells for editing the data of multiple
+	// cells at once, using the first cell as the reference cell
+	var cells = (cell instanceof Array) ? cell : [cell];
+	cell = cells[0];
+	var multi = cells.length > 1;
+
+	// Resolves the value of each cell as an XML node
+	var values = [];
+
+	for (var i = 0; i < cells.length; i++)
 	{
-		var doc = mxUtils.createXmlDocument();
-		var obj = doc.createElement('object');
-		obj.setAttribute('label', value || '');
-		value = obj;
+		var cellValue = graph.getModel().getValue(cells[i]);
+
+		// Converts the value to an XML node
+		if (!mxUtils.isNode(cellValue))
+		{
+			var doc = mxUtils.createXmlDocument();
+			var obj = doc.createElement('object');
+			obj.setAttribute('label', cellValue || '');
+			cellValue = obj;
+		}
+
+		values.push(cellValue);
 	}
-	
+
+	var value = values[0];
+
 	var meta = {};
-	
+
 	try
 	{
 		var temp = mxUtils.getValue(ui.editor.graph.getCurrentCellStyle(cell), 'metaData', null);
-		
+
 		if (temp != null)
 		{
 			meta = JSON.parse(temp);
@@ -1321,110 +3757,174 @@ var EditDataDialog = function(ui, cell)
 	{
 		// ignore
 	}
-	
-	// Creates the dialog contents
-	var form = new mxForm('properties');
-	form.table.style.width = '100%';
 
 	var attrs = value.attributes;
 	var names = [];
 	var texts = [];
+	var rows = [];
+	var mixed = [];
+	var placeholdersTouched = false;
 	var count = 0;
 
-	var id = (EditDataDialog.getDisplayIdForCell != null) ?
-		EditDataDialog.getDisplayIdForCell(ui, cell) : null;
-	
-	var addRemoveButton = function(text, name)
+	var id = (!multi && EditDataDialog.getDisplayIdForCell != null) ?
+		EditDataDialog.getDisplayIdForCell(ui, cell, optionalGraph) : null;
+
+	// Properties container for dynamic rows
+	var propertiesContainer = document.createElement('div');
+	var propsSection = null;
+
+	// Hides the properties section while it has no rows so that
+	// no empty section box is shown for cells without properties
+	var updatePropsSection = function()
 	{
-		var wrapper = document.createElement('div');
-		wrapper.style.position = 'relative';
-		wrapper.style.paddingRight = '20px';
-		wrapper.style.boxSizing = 'border-box';
-		wrapper.style.width = '100%';
-		
+		if (propsSection != null)
+		{
+			propsSection.style.display = (propertiesContainer.firstChild != null) ? '' : 'none';
+		}
+	};
+
+	var addRemoveButton = function(row, name)
+	{
 		var removeAttr = document.createElement('a');
 		var img = mxUtils.createImage(Dialog.prototype.closeImage);
 		img.style.height = '9px';
 		img.style.fontSize = '9px';
-		img.style.marginBottom = (mxClient.IS_IE11) ? '-1px' : '5px';
-		
+
 		removeAttr.className = 'geButton';
 		removeAttr.setAttribute('title', mxResources.get('delete'));
-		removeAttr.style.position = 'absolute';
-		removeAttr.style.top = '4px';
-		removeAttr.style.right = '0px';
-		removeAttr.style.margin = '0px';
-		removeAttr.style.width = '9px';
-		removeAttr.style.height = '9px';
 		removeAttr.style.cursor = 'pointer';
+		removeAttr.style.flexShrink = '0';
 		removeAttr.appendChild(img);
-		
+
 		var removeAttrFn = (function(name)
 		{
 			return function()
 			{
-				var count = 0;
-				
 				for (var j = 0; j < names.length; j++)
 				{
-					if (names[j] == name)
+					if (names[j] == name && texts[j] != null)
 					{
 						texts[j] = null;
-						form.table.deleteRow(count + ((id != null) ? 1 : 0));
-						
+						rows[j] = null;
+						row.parentNode.removeChild(row);
+						updatePropsSection();
+
 						break;
-					}
-					
-					if (texts[j] != null)
-					{
-						count++;
 					}
 				}
 			};
 		})(name);
-		
+
 		mxEvent.addListener(removeAttr, 'click', removeAttrFn);
-		
-		var parent = text.parentNode;
-		wrapper.appendChild(text);
-		wrapper.appendChild(removeAttr);
-		parent.appendChild(wrapper);
+		row.appendChild(removeAttr);
 	};
-	
-	var addTextArea = function(index, name, value)
+
+	var addTextArea = function(index, name, value, isMixed)
 	{
 		names[index] = name;
-		texts[index] = form.addTextarea(names[count] + ':', value, 2);
-		texts[index].style.width = '100%';
-		
-		if (value.indexOf('\n') > 0)
+
+		var row = document.createElement('div');
+		row.className = 'geDialogFormRow';
+		row.style.alignItems = 'flex-start';
+
+		var lbl = document.createElement('span');
+		lbl.className = 'geDialogFormLabel';
+		lbl.style.paddingTop = '4px';
+		mxUtils.write(lbl, name + ':');
+		row.appendChild(lbl);
+
+		var textarea = document.createElement('textarea');
+		textarea.setAttribute('rows', (value.indexOf('\n') > 0) ? '3' : '2');
+		textarea.value = value;
+		textarea.style.resize = 'vertical';
+
+		// Empty fields for differing values are only applied
+		// to the cells if a value is entered by the user
+		if (isMixed)
 		{
-			texts[index].setAttribute('rows', '2');
+			mixed[index] = true;
+			textarea.setAttribute('placeholder',
+				mxResources.get('multipleValues'));
 		}
-		
-		addRemoveButton(texts[index], name);
-		
+
+		row.appendChild(textarea);
+
+		texts[index] = textarea;
+		rows[index] = row;
+
+		addRemoveButton(row, name);
+		propertiesContainer.appendChild(row);
+
 		if (meta[name] != null && meta[name].editable == false)
 		{
-			texts[index].setAttribute('disabled', 'disabled');
+			textarea.setAttribute('disabled', 'disabled');
 		}
 	};
-	
+
 	var temp = [];
 	var isLayer = graph.getModel().getParent(cell) == graph.getModel().getRoot();
+	var style = graph.getCellStyle(cell);
 
-	for (var i = 0; i < attrs.length; i++)
+	if (multi)
 	{
-		if ((isLayer || attrs[i].nodeName != 'label') && attrs[i].nodeName != 'placeholders')
+		// Shows the union of the attribute names of all cells with
+		// the value shown if it is the same for all cells and an
+		// empty field with a placeholder for differing values
+		var seen = {};
+
+		for (var i = 0; i < values.length; i++)
 		{
-			temp.push({name: attrs[i].nodeName, value: attrs[i].nodeValue});
+			var attrs2 = values[i].attributes;
+
+			for (var j = 0; j < attrs2.length; j++)
+			{
+				var name = attrs2[j].nodeName;
+
+				if (name != 'label' && name != 'placeholders' &&
+					!seen['$' + name])
+				{
+					seen['$' + name] = true;
+					var common = attrs2[j].nodeValue;
+
+					for (var k = 0; k < values.length && common != null; k++)
+					{
+						if (values[k].getAttribute(name) != common)
+						{
+							common = null;
+						}
+					}
+
+					temp.push({name: name, value: (common != null) ?
+						common : '', mixed: common == null});
+				}
+			}
 		}
 	}
-	
+	else
+	{
+		for (var i = 0; i < attrs.length; i++)
+		{
+			if ((attrs[i].nodeName != 'label' || style['metaEdit'] == '1' ||
+				Graph.translateDiagram || isLayer) &&
+				attrs[i].nodeName != 'placeholders')
+			{
+				temp.push({name: attrs[i].nodeName, value: attrs[i].nodeValue});
+			}
+		}
+	}
+
 	// Sorts by name
 	temp.sort(function(a, b)
 	{
-	    if (a.name < b.name)
+		if (a.name == 'label')
+		{
+			return 1;
+		}
+		else if (b.name == 'label')
+		{
+			return -1;
+		}
+	    else if (a.name < b.name)
 	    {
 	    	return -1;
 	    }
@@ -1438,30 +3938,68 @@ var EditDataDialog = function(ui, cell)
 	    }
 	});
 
+	// --- ID section ---
 	if (id != null)
-	{	
-		var text = document.createElement('div');
-		text.style.width = '100%';
-		text.style.fontSize = '11px';
-		text.style.textAlign = 'center';
-		mxUtils.write(text, id);
-		
-		var idInput = form.addField(mxResources.get('id') + ':', text);
-		
-		mxEvent.addListener(text, 'dblclick', function(evt)
+	{
+		var idSection = document.createElement('div');
+		idSection.className = 'geDialogSection';
+
+		var idRow = document.createElement('div');
+		idRow.className = 'geDialogFormRow';
+
+		var idLabel = document.createElement('span');
+		idLabel.className = 'geDialogFormLabel';
+		mxUtils.write(idLabel, mxResources.get('id') + ':');
+		idRow.appendChild(idLabel);
+
+		var idText = document.createElement('span');
+		idText.style.cursor = 'pointer';
+		idText.setAttribute('title', mxResources.get('doubleClickToEdit',
+			null, 'Double-click to edit'));
+		mxUtils.write(idText, id);
+		idRow.appendChild(idText);
+
+		mxEvent.addListener(idText, 'dblclick', function(evt)
 		{
-			if (mxEvent.isControlDown(evt) || mxEvent.isMetaDown(evt))
+			var dlg = new FilenameDialog(ui, id, mxResources.get('apply'),
+				mxUtils.bind(this, function(value)
 			{
-				var dlg = new FilenameDialog(ui, id, mxResources.get('apply'), mxUtils.bind(this, function(value)
+				if (value != null && value.length > 0 && value != id)
 				{
-					if (value != null && value.length > 0 && value != id)
+					if (graph.model.isRoot(cell))
+					{
+						var page = ui.getPageById(id);
+
+						if (page != null)
+						{
+							if (ui.getPageById(value) == null)
+							{
+								var index = ui.getPageIndex(page);
+
+								if (index >= 0)
+								{
+									ui.removePage(page);
+									page.node.setAttribute('id', value);
+									id = value;
+									idText.innerHTML = mxUtils.htmlEntities(value);
+									ui.insertPage(page, index);
+								}
+							}
+							else
+							{
+								ui.handleError({message: mxResources.get('alreadyExst',
+									[mxResources.get('page')])});
+							}
+						}
+					}
+					else
 					{
 						if (graph.getModel().getCell(value) == null)
 						{
 							graph.getModel().cellRemoved(cell);
 							cell.setId(value);
 							id = value;
-							idInput.innerHTML = mxUtils.htmlEntities(value);
+							idText.innerHTML = mxUtils.htmlEntities(value);
 							graph.getModel().cellAdded(cell);
 						}
 						else
@@ -1469,53 +4007,56 @@ var EditDataDialog = function(ui, cell)
 							ui.handleError({message: mxResources.get('alreadyExst', [value])});
 						}
 					}
-				}), mxResources.get('id'));
-				ui.showDialog(dlg.container, 300, 80, true, true);
-				dlg.init();
-			}
+				}
+			}), mxResources.get('id'));
+			ui.showDialog(dlg.container, 300, 80, true, true);
+			dlg.init();
 		});
+
+		idSection.appendChild(idRow);
+		container.appendChild(idSection);
 	}
-	
+
 	for (var i = 0; i < temp.length; i++)
 	{
-		addTextArea(count, temp[i].name, temp[i].value);
+		addTextArea(count, temp[i].name, temp[i].value, temp[i].mixed);
 		count++;
 	}
-	
-	var top = document.createElement('div');
-	top.style.cssText = 'position:absolute;left:30px;right:30px;overflow-y:auto;top:30px;bottom:80px;';
-	top.appendChild(form.table);
 
-	var newProp = document.createElement('div');
-	newProp.style.boxSizing = 'border-box';
-	newProp.style.paddingRight = '160px';
-	newProp.style.whiteSpace = 'nowrap';
-	newProp.style.marginTop = '6px';
-	newProp.style.width = '100%';
-	
+	// --- Properties section ---
+	propsSection = document.createElement('div');
+	propsSection.className = 'geDialogSection';
+	propsSection.style.flex = '1';
+	propsSection.style.minHeight = '0';
+	propsSection.style.overflowY = 'auto';
+	propsSection.appendChild(propertiesContainer);
+	container.appendChild(propsSection);
+	updatePropsSection();
+
+	// --- Add Property section ---
+	var addSection = document.createElement('div');
+	addSection.className = 'geDialogSection';
+
+	var addRow = document.createElement('div');
+	addRow.className = 'geDialogFormRow';
+
 	var nameInput = document.createElement('input');
 	nameInput.setAttribute('placeholder', mxResources.get('enterPropertyName'));
 	nameInput.setAttribute('type', 'text');
-	nameInput.setAttribute('size', (mxClient.IS_IE || mxClient.IS_IE11) ? '36' : '40');
-	nameInput.style.boxSizing = 'border-box';
-	nameInput.style.marginLeft = '2px';
-	nameInput.style.width = '100%';
-	
-	newProp.appendChild(nameInput);
-	top.appendChild(newProp);
-	div.appendChild(top);
-	
+	addRow.appendChild(nameInput);
+
 	var addBtn = mxUtils.button(mxResources.get('addProperty'), function()
 	{
 		var name = nameInput.value;
 
-		// Avoid ':' in attribute names which seems to be valid in Chrome
-		if (name.length > 0 && name != 'label' && name != 'placeholders' && name.indexOf(':') < 0)
+		// Avoids reserved names and ':' in attribute names which seems to be valid in Chrome
+		if (name.length > 0 && !Graph.isReservedDataName(name) &&
+			EditDataDialog.isValidAttributeName(name))
 		{
 			try
 			{
 				var idx = mxUtils.indexOf(names, name);
-				
+
 				if (idx >= 0 && texts[idx] != null)
 				{
 					texts[idx].focus();
@@ -1525,20 +4066,20 @@ var EditDataDialog = function(ui, cell)
 					// Checks if the name is valid
 					var clone = value.cloneNode(false);
 					clone.setAttribute(name, '');
-					
+
 					if (idx >= 0)
 					{
 						names.splice(idx, 1);
 						texts.splice(idx, 1);
+						rows.splice(idx, 1);
+						mixed.splice(idx, 1);
 					}
 
-					names.push(name);
-					var text = form.addTextarea(name + ':', '', 2);
-					text.style.width = '100%';
-					texts.push(text);
-					addRemoveButton(text, name);
-
-					text.focus();
+					var newIndex = names.length;
+					addTextArea(newIndex, name, '');
+					updatePropsSection();
+					texts[newIndex].focus();
+					propsSection.scrollTop = propsSection.scrollHeight;
 				}
 
 				addBtn.setAttribute('disabled', 'disabled');
@@ -1546,84 +4087,39 @@ var EditDataDialog = function(ui, cell)
 			}
 			catch (e)
 			{
-				mxUtils.alert(e);
+				ui.handleError(e);
 			}
 		}
 		else
 		{
-			mxUtils.alert(mxResources.get('invalidName'));
+			// Lists the reserved names if a reserved name was entered
+			ui.showError(mxResources.get('error'), mxResources.get('invalidName') +
+				((Graph.isReservedDataName(name)) ? ' (' +
+				Graph.reservedDataNames.join(', ') + ', :)' : ''),
+				mxResources.get('ok'));
 		}
 	});
-	
-	this.init = function()
-	{
-		if (texts.length > 0)
-		{
-			texts[0].focus();
-		}
-		else
-		{
-			nameInput.focus();
-		}
-	};
-	
+
 	addBtn.setAttribute('title', mxResources.get('addProperty'));
 	addBtn.setAttribute('disabled', 'disabled');
-	addBtn.style.textOverflow = 'ellipsis';
-	addBtn.style.position = 'absolute';
-	addBtn.style.overflow = 'hidden';
-	addBtn.style.width = '144px';
-	addBtn.style.right = '0px';
+	addBtn.style.flexShrink = '0';
 	addBtn.className = 'geBtn';
-	newProp.appendChild(addBtn);
 
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	// The row's column-gap owns the spacing
+	addBtn.style.marginLeft = '0';
+	addRow.appendChild(addBtn);
+
+	addSection.appendChild(addRow);
+	container.appendChild(addSection);
+
+	mxEvent.addListener(nameInput, 'keypress', function(e)
 	{
-		ui.hideDialog.apply(ui, arguments);
-	});
-	
-	cancelBtn.className = 'geBtn';
-	
-	var applyBtn = mxUtils.button(mxResources.get('apply'), function()
-	{
-		try
+		if (e.keyCode == 13)
 		{
-			ui.hideDialog.apply(ui, arguments);
-			
-			// Clones and updates the value
-			value = value.cloneNode(true);
-			var removeLabel = false;
-			
-			for (var i = 0; i < names.length; i++)
-			{
-				if (texts[i] == null)
-				{
-					value.removeAttribute(names[i]);
-				}
-				else
-				{
-					value.setAttribute(names[i], texts[i].value);
-					removeLabel = removeLabel || (names[i] == 'placeholder' &&
-						value.getAttribute('placeholders') == '1');
-				}
-			}
-			
-			// Removes label if placeholder is assigned
-			if (removeLabel)
-			{
-				value.removeAttribute('label');
-			}
-			
-			// Updates the value of the cell (undoable)
-			graph.getModel().setValue(cell, value);
-		}
-		catch (e)
-		{
-			mxUtils.alert(e);
+			addBtn.click();
 		}
 	});
-	applyBtn.className = 'geBtn gePrimaryBtn';
-	
+
 	function updateAddBtn()
 	{
 		if (nameInput.value.length > 0)
@@ -1637,30 +4133,51 @@ var EditDataDialog = function(ui, cell)
 	};
 
 	mxEvent.addListener(nameInput, 'keyup', updateAddBtn);
-	
+
 	// Catches all changes that don't fire a keyup (such as paste via mouse)
 	mxEvent.addListener(nameInput, 'change', updateAddBtn);
-	
-	var buttons = document.createElement('div');
-	buttons.style.cssText = 'position:absolute;left:30px;right:30px;text-align:right;bottom:30px;height:40px;'
-	
+
+	// --- Options section ---
 	if (ui.editor.graph.getModel().isVertex(cell) || ui.editor.graph.getModel().isEdge(cell))
 	{
-		var replace = document.createElement('span');
-		replace.style.marginRight = '10px';
+		var optSection = document.createElement('div');
+		optSection.className = 'geDialogSection';
+
+		var checkRow = document.createElement('div');
+		checkRow.className = 'geDialogCheckRow';
+
 		var input = document.createElement('input');
 		input.setAttribute('type', 'checkbox');
-		input.style.marginRight = '6px';
-		
-		if (value.getAttribute('placeholders') == '1')
+
+		var placeholdersCount = 0;
+
+		for (var i = 0; i < values.length; i++)
+		{
+			if (values[i].getAttribute('placeholders') == '1')
+			{
+				placeholdersCount++;
+			}
+		}
+
+		if (placeholdersCount == values.length)
 		{
 			input.setAttribute('checked', 'checked');
 			input.defaultChecked = true;
 		}
-	
+		else if (placeholdersCount > 0)
+		{
+			input.indeterminate = true;
+		}
+
 		mxEvent.addListener(input, 'click', function()
 		{
-			if (value.getAttribute('placeholders') == '1')
+			if (multi)
+			{
+				// Applied to all cells on apply only if toggled
+				placeholdersTouched = true;
+				input.indeterminate = false;
+			}
+			else if (value.getAttribute('placeholders') == '1')
 			{
 				value.removeAttribute('placeholders');
 			}
@@ -1669,48 +4186,180 @@ var EditDataDialog = function(ui, cell)
 				value.setAttribute('placeholders', '1');
 			}
 		});
-		
-		replace.appendChild(input);
-		mxUtils.write(replace, mxResources.get('placeholders'));
-		
+
+		checkRow.appendChild(input);
+		var lbl = document.createElement('label');
+		mxUtils.write(lbl, mxResources.get('placeholders'));
+		checkRow.appendChild(lbl);
+
 		if (EditDataDialog.placeholderHelpLink != null)
 		{
-			var link = document.createElement('a');
-			link.setAttribute('href', EditDataDialog.placeholderHelpLink);
-			link.setAttribute('title', mxResources.get('help'));
-			link.setAttribute('target', '_blank');
-			link.style.marginLeft = '8px';
-			link.style.cursor = 'help';
-			
-			var icon = document.createElement('img');
-			mxUtils.setOpacity(icon, 50);
-			icon.style.height = '16px';
-			icon.style.width = '16px';
-			icon.setAttribute('border', '0');
-			icon.setAttribute('valign', 'middle');
-			icon.style.marginTop = (mxClient.IS_IE11) ? '0px' : '-4px';
-			icon.setAttribute('src', Editor.helpImage);
-			link.appendChild(icon);
-			
-			replace.appendChild(link);
+			checkRow.appendChild(ui.createHelpIcon(
+				EditDataDialog.placeholderHelpLink));
 		}
-		
-		buttons.appendChild(replace);
-	}
-	
-	if (ui.editor.cancelFirst)
-	{
-		buttons.appendChild(cancelBtn);
-		buttons.appendChild(applyBtn);
-	}
-	else
-	{
-		buttons.appendChild(applyBtn);
-		buttons.appendChild(cancelBtn);
+
+		optSection.appendChild(checkRow);
+		container.appendChild(optSection);
 	}
 
-	div.appendChild(buttons);
-	this.container = div;
+	// --- Button bar ---
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	{
+		ui.hideDialog.apply(ui, arguments);
+	});
+
+	cancelBtn.setAttribute('title', 'Escape');
+	cancelBtn.className = 'geBtn';
+
+	var exportBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function(evt)
+	{
+		ui.showDataExport(JSON.stringify(graph.getDataForCells(cells, true), null, 2), 'data.json');
+	}));
+
+	exportBtn.setAttribute('title', mxResources.get('export'));
+	exportBtn.className = 'geBtn';
+
+	var applyBtn = mxUtils.button(mxResources.get('apply'), function()
+	{
+		try
+		{
+			ui.hideDialog.apply(ui, arguments);
+			graph.getModel().beginUpdate();
+
+			try
+			{
+				for (var i = 0; i < cells.length; i++)
+				{
+					// Clones and updates the value
+					var newValue = values[i].cloneNode(true);
+
+					// Applies the placeholders checkbox to all cells
+					// only if it was toggled by the user
+					if (multi && placeholdersTouched)
+					{
+						if (input.checked)
+						{
+							newValue.setAttribute('placeholders', '1');
+						}
+						else
+						{
+							newValue.removeAttribute('placeholders');
+						}
+					}
+
+					var removeLabel = false;
+
+					for (var j = 0; j < names.length; j++)
+					{
+						if (texts[j] == null)
+						{
+							newValue.removeAttribute(names[j]);
+						}
+						else if (!mixed[j] || texts[j].value != '')
+						{
+							newValue.setAttribute(names[j], texts[j].value);
+							removeLabel = removeLabel || (names[j] == 'placeholder' &&
+								newValue.getAttribute('placeholders') == '1');
+						}
+					}
+
+					// Removes label if placeholder is assigned
+					if (removeLabel)
+					{
+						newValue.removeAttribute('label');
+					}
+
+					// Updates the value of the cell (undoable)
+					graph.getModel().setValue(cells[i], newValue);
+				}
+			}
+			finally
+			{
+				graph.getModel().endUpdate();
+			}
+		}
+		catch (e)
+		{
+			ui.handleError(e);
+		}
+	});
+
+	applyBtn.setAttribute('title', 'Ctrl+Enter');
+	applyBtn.className = 'geBtn gePrimaryBtn';
+
+	var btnRow = document.createElement('div');
+	btnRow.style.textAlign = 'right';
+	btnRow.style.paddingTop = '16px';
+
+	// Keeps the buttons at the bottom if the properties section is hidden
+	btnRow.style.marginTop = 'auto';
+
+	if (ui.editor.cancelFirst)
+	{
+		btnRow.appendChild(cancelBtn);
+	}
+
+	btnRow.appendChild(exportBtn);
+	btnRow.appendChild(applyBtn);
+
+	if (!ui.editor.cancelFirst)
+	{
+		btnRow.appendChild(cancelBtn);
+	}
+
+	container.appendChild(btnRow);
+
+	// --- Keyboard shortcuts ---
+	mxEvent.addListener(container, 'keydown', function(e)
+	{
+		if (e.keyCode == 13 && mxEvent.isControlDown(e))
+		{
+			applyBtn.click();
+		}
+	});
+
+	this.init = function()
+	{
+		if (texts.length > 0)
+		{
+			texts[0].focus();
+		}
+		else
+		{
+			nameInput.focus();
+		}
+	};
+
+	this.container = container;
+};
+
+/**
+ * Characters allowed as the first character of a data property name. See
+ * Graph.xmlNameStartChars: letters that every browser's XML parser accepts,
+ * without colons, which would be undeclared namespace prefixes.
+ */
+EditDataDialog.nameStartChar = Graph.xmlNameStartChars;
+
+/**
+ * Characters allowed in a data property name after the first character.
+ */
+EditDataDialog.nameChar = Graph.xmlNameChars;
+
+/**
+ * Matches a valid XML attribute name. Browsers' setAttribute does not reliably
+ * reject names that start with a digit (or other invalid characters), which
+ * produces invalid XML and silently corrupts the file on save, see
+ * jgraph/drawio#5647.
+ */
+EditDataDialog.attributeNamePattern = new RegExp('^[' + EditDataDialog.nameStartChar +
+	'][' + EditDataDialog.nameChar + ']*$');
+
+/**
+ * Returns true if the given string can be used as a data property (XML attribute) name.
+ */
+EditDataDialog.isValidAttributeName = function(name)
+{
+	return EditDataDialog.attributeNamePattern.test(name);
 };
 
 /**
@@ -1734,11 +4383,18 @@ EditDataDialog.getDisplayIdForCell = function(ui, cell)
 EditDataDialog.placeholderHelpLink = null;
 
 /**
- * Constructs a new link dialog.
+ * Constructs a new link dialog. mixed is an optional object whose link and
+ * linkTarget flags mark values that differ between the cells being edited.
+ * A mixed link shows an empty field and stays unchanged if the result is
+ * empty and the user neither typed into the field nor reset it. fn is then
+ * called with an object as its fourth argument whose link and linkTarget
+ * flags mark the mixed values the user left unchanged, so the caller keeps
+ * each cell's own value.
  */
-var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
+var LinkDialog = function(editorUi, initialValue, btnLabel, fn, mixed)
 {
 	var div = document.createElement('div');
+	div.style.paddingBottom = '10px';
 	mxUtils.write(div, mxResources.get('editLink') + ':');
 	
 	var inner = document.createElement('div');
@@ -1750,9 +4406,13 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	inner.style.cursor = 'default';
 	inner.style.paddingRight = '20px';
 	
+	var mixedLink = mixed != null && mixed.link == true;
+	var linkEdited = false;
+
 	var linkInput = document.createElement('input');
 	linkInput.setAttribute('value', initialValue);
-	linkInput.setAttribute('placeholder', 'http://www.example.com/');
+	linkInput.setAttribute('placeholder', (mixedLink) ?
+		mxResources.get('multipleValues') : 'http://www.example.com/');
 	linkInput.setAttribute('type', 'text');
 	linkInput.style.marginTop = '6px';
 	linkInput.style.width = '400px';
@@ -1780,7 +4440,21 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	{
 		linkInput.value = '';
 		linkInput.focus();
+		linkEdited = true;
 	});
+
+	mxEvent.addListener(linkInput, 'input', function()
+	{
+		linkEdited = true;
+	});
+
+	// There is no target option in this dialog, so a mixed target
+	// is always unchanged
+	var getUnchanged = function()
+	{
+		return {link: mixedLink && !linkEdited && linkInput.value == '',
+			linkTarget: mixed != null && mixed.linkTarget == true};
+	};
 	
 	inner.appendChild(linkInput);
 	inner.appendChild(cross);
@@ -1801,7 +4475,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	};
 	
 	var btns = document.createElement('div');
-	btns.style.marginTop = '18px';
+	btns.style.marginTop = '34px';
 	btns.style.textAlign = 'right';
 
 	mxEvent.addListener(linkInput, 'keypress', function(e)
@@ -1809,7 +4483,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 		if (e.keyCode == 13)
 		{
 			editorUi.hideDialog();
-			fn(linkInput.value);
+			fn(linkInput.value, null, null, getUnchanged());
 		}
 	});
 
@@ -1827,7 +4501,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	var mainBtn = mxUtils.button(btnLabel, function()
 	{
 		editorUi.hideDialog();
-		fn(linkInput.value);
+		fn(linkInput.value, null, null, getUnchanged());
 	});
 	mainBtn.className = 'geBtn gePrimaryBtn';
 	btns.appendChild(mainBtn);
@@ -1853,7 +4527,6 @@ var OutlineWindow = function(editorUi, x, y, w, h)
 	div.style.position = 'absolute';
 	div.style.width = '100%';
 	div.style.height = '100%';
-	div.style.border = '1px solid whiteSmoke';
 	div.style.overflow = 'hidden';
 
 	this.window = new mxWindow(mxResources.get('outline'), div, x, y, w, h, true, true);
@@ -1864,152 +4537,75 @@ var OutlineWindow = function(editorUi, x, y, w, h)
 	this.window.setClosable(true);
 	this.window.setVisible(true);
 	
-	this.window.setLocation = function(x, y)
-	{
-		var iw = window.innerWidth || document.body.clientWidth || document.documentElement.clientWidth;
-		var ih = window.innerHeight || document.body.clientHeight || document.documentElement.clientHeight;
-		
-		x = Math.max(0, Math.min(x, iw - this.table.clientWidth));
-		y = Math.max(0, Math.min(y, ih - this.table.clientHeight - 48));
-
-		if (this.getX() != x || this.getY() != y)
-		{
-			mxWindow.prototype.setLocation.apply(this, arguments);
-		}
-	};
-	
-	var resizeListener = mxUtils.bind(this, function()
-	{
-		var x = this.window.getX();
-		var y = this.window.getY();
-		
-		this.window.setLocation(x, y);
-	});
-	
-	mxEvent.addListener(window, 'resize', resizeListener);
-	
 	var outline = editorUi.createOutline(this.window);
 
-	this.destroy = function()
+	editorUi.installResizeHandler(this, true, function()
 	{
-		mxEvent.removeListener(window, 'resize', resizeListener);
-		this.window.destroy();
 		outline.destroy();
-	}
+	});
 
-	this.window.addListener(mxEvent.RESIZE, mxUtils.bind(this, function()
-   	{
-		outline.update(false);
-		outline.outline.sizeDidChange();
-   	}));
-	
 	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function()
 	{
 		this.window.fit();
-		outline.suspended = false;
-		outline.outline.refresh();
-		outline.update();
+		outline.setSuspended(false);
 	}));
 	
 	this.window.addListener(mxEvent.HIDE, mxUtils.bind(this, function()
 	{
-		outline.suspended = true;
+		outline.setSuspended(true);
 	}));
 	
 	this.window.addListener(mxEvent.NORMALIZE, mxUtils.bind(this, function()
 	{
-		outline.suspended = false;
-		outline.update();
+		outline.setSuspended(false);
 	}));
 			
 	this.window.addListener(mxEvent.MINIMIZE, mxUtils.bind(this, function()
 	{
-		outline.suspended = true;
+		outline.setSuspended(true);
 	}));
 
-	var outlineCreateGraph = outline.createGraph;
-	outline.createGraph = function(container)
-	{
-		var g = outlineCreateGraph.apply(this, arguments);
-		g.gridEnabled = false;
-		g.pageScale = graph.pageScale;
-		g.pageFormat = graph.pageFormat;
-		g.background = (graph.background == null || graph.background == mxConstants.NONE) ? graph.defaultPageBackgroundColor : graph.background;
-		g.pageVisible = graph.pageVisible;
-
-		var current = mxUtils.getCurrentStyle(graph.container);
-		div.style.backgroundColor = current.backgroundColor;
-		
-		return g;
-	};
-	
-	function update()
-	{
-		outline.outline.pageScale = graph.pageScale;
-		outline.outline.pageFormat = graph.pageFormat;
-		outline.outline.pageVisible = graph.pageVisible;
-		outline.outline.background = (graph.background == null || graph.background == mxConstants.NONE) ? graph.defaultPageBackgroundColor : graph.background;;
-		
-		var current = mxUtils.getCurrentStyle(graph.container);
-		div.style.backgroundColor = current.backgroundColor;
-
-		if (graph.view.backgroundPageShape != null && outline.outline.view.backgroundPageShape != null)
-		{
-			outline.outline.view.backgroundPageShape.fill = graph.view.backgroundPageShape.fill;
-		}
-		
-		outline.outline.refresh();
-	};
-
 	outline.init(div);
+	
+	mxEvent.addMouseWheelListener(function(evt, up, force, cx, cy, pinch)
+	{
+		var outlineWheel = false;
+		var source = mxEvent.getSource(evt);
 
-	editorUi.editor.addListener('resetGraphView', update);
-	editorUi.addListener('pageFormatChanged', update);
-	editorUi.addListener('backgroundColorChanged', update);
-	editorUi.addListener('backgroundImageChanged', update);
-	editorUi.addListener('pageViewChanged', function()
-	{
-		update();
-		outline.update(true);
-	});
-	
-	if (outline.outline.dialect == mxConstants.DIALECT_SVG)
-	{
-		var zoomInAction = editorUi.actions.get('zoomIn');
-		var zoomOutAction = editorUi.actions.get('zoomOut');
-		
-		mxEvent.addMouseWheelListener(function(evt, up)
+		while (source != null)
 		{
-			var outlineWheel = false;
-			var source = mxEvent.getSource(evt);
-	
-			while (source != null)
+			if (source == outline.svg)
 			{
-				if (source == outline.outline.view.canvas.ownerSVGElement)
-				{
-					outlineWheel = true;
-					break;
-				}
-	
-				source = source.parentNode;
+				outlineWheel = true;
+				break;
 			}
-	
-			if (outlineWheel)
+
+			source = source.parentNode;
+		}
+
+		if (outlineWheel)
+		{
+			var factor = graph.zoomFactor;
+			var smooth = false;
+
+			// Slower zoom for pinch gesture on trackpad
+			if (evt.deltaY != null && Math.round(evt.deltaY) != evt.deltaY)
 			{
-				if (up)
-				{
-					zoomInAction.funct();
-				}
-				else
-				{
-					zoomOutAction.funct();
-				}
+				factor = 1 + (Math.abs(evt.deltaY) / 20) * (factor - 1);
+				smooth = true;
 			}
-		});
-	}
-	
-	this.outline = outline;
-	this.update = update;
+			// Pinch gesture on touch screens zooms by the change of the
+			// distance between the fingers
+			else if (pinch != null)
+			{
+				factor = (pinch > 1) ? pinch : 1 / pinch;
+				smooth = true;
+			}
+
+			graph.lazyZoom(up, null, null, factor, smooth, true);
+			mxEvent.consume(evt);
+		}
+	});
 };
 
 /**
@@ -2018,25 +4614,21 @@ var OutlineWindow = function(editorUi, x, y, w, h)
 var LayersWindow = function(editorUi, x, y, w, h)
 {
 	var graph = editorUi.editor.graph;
+	var model = graph.getModel();
 	
 	var div = document.createElement('div');
 	div.style.userSelect = 'none';
-	div.style.background = (Dialog.backdropColor == 'white') ? 'whiteSmoke' : Dialog.backdropColor;
-	div.style.border = '1px solid whiteSmoke';
 	div.style.height = '100%';
 	div.style.marginBottom = '10px';
 	div.style.overflow = 'auto';
 
-	var tbarHeight = (!EditorUi.compactUi) ? '30px' : '26px';
-	
 	var listDiv = document.createElement('div')
-	listDiv.style.backgroundColor = (Dialog.backdropColor == 'white') ? '#dcdcdc' : Dialog.backdropColor;
 	listDiv.style.position = 'absolute';
 	listDiv.style.overflow = 'auto';
 	listDiv.style.left = '0px';
 	listDiv.style.right = '0px';
 	listDiv.style.top = '0px';
-	listDiv.style.bottom = (parseInt(tbarHeight) + 7) + 'px';
+	listDiv.style.bottom = '32px';
 	div.appendChild(listDiv);
 	
 	var dragSource = null;
@@ -2059,48 +4651,457 @@ var LayersWindow = function(editorUi, x, y, w, h)
 
 	var layerCount = null;
 	var selectionLayer = null;
+	var layerDivs = new mxDictionary();
 	var ldiv = document.createElement('div');
-	
-	ldiv.className = 'geToolbarContainer';
-	ldiv.style.position = 'absolute';
-	ldiv.style.bottom = '0px';
-	ldiv.style.left = '0px';
-	ldiv.style.right = '0px';
-	ldiv.style.height = tbarHeight;
-	ldiv.style.overflow = 'hidden';
-	ldiv.style.padding = (!EditorUi.compactUi) ? '1px' : '4px 0px 3px 0px';
-	ldiv.style.backgroundColor = (Dialog.backdropColor == 'white') ? 'whiteSmoke' : Dialog.backdropColor;
-	ldiv.style.borderWidth = '1px 0px 0px 0px';
-	ldiv.style.borderColor = '#c3c3c3';
-	ldiv.style.borderStyle = 'solid';
-	ldiv.style.display = 'block';
-	ldiv.style.whiteSpace = 'nowrap';
+	ldiv.className = 'geToolbarContainer geDialogToolbar';
 	
 	var link = document.createElement('a');
 	link.className = 'geButton';
 	
-	var removeLink = link.cloneNode();
-	removeLink.innerHTML = '<div class="geSprite geSprite-delete" style="display:inline-block;"></div>';
+	var addLink = link.cloneNode(false);
+	addLink.style.backgroundImage = 'url(' + Editor.plusImage + ')';
+	addLink.setAttribute('title', mxResources.get('addLayer'));
+
+	mxEvent.addListener(addLink, 'click', function(evt)
+	{
+		if (graph.isEnabled())
+		{
+			selectLayers(false);
+			model.beginUpdate();
+			var cell
+			
+			try
+			{
+				cell = graph.addCell(new mxCell(mxResources.get('untitledLayer')), model.root);
+				graph.setDefaultParent(cell);
+			}
+			finally
+			{
+				model.endUpdate();
+			}
+
+			renameLayer(cell);
+		}
+		
+		mxEvent.consume(evt);
+	});
+	
+	if (!graph.isEnabled())
+	{
+		addLink.classList.add('mxDisabled');
+	}
+	
+	ldiv.appendChild(addLink);
+	
+	function renameLayer(layer)
+	{
+		if (graph.isEnabled() && layer != null)
+		{
+			var div = layerDivs.get(layer);
+
+			if (div != null)
+			{
+				var spans = div.getElementsByTagName('div');
+
+				if (spans != null && spans.length > 1)
+				{
+					var span = spans[1];
+					var oldValue = mxUtils.getTextContent(span);
+					span.style.textOverflow = '';
+					span.style.cursor = 'text';
+					span.contentEditable = 'true';
+					span.focus();
+					document.execCommand('selectAll', false, null);
+
+					// Stops drag and drop on parent div
+					div.removeAttribute('draggable');
+					div.style.cursor = '';
+
+					var stopEditing = function(applyValue)
+					{
+						if (span.contentEditable == 'true')
+						{
+							span.contentEditable = 'false';
+							var newValue = mxUtils.getTextContent(span);
+
+							if (applyValue && newValue != oldValue)
+							{
+								var newValue = mxUtils.getTextContent(span);
+
+								if (newValue.length > 0)
+								{
+									graph.cellLabelChanged(layer, newValue);
+								}
+								else
+								{
+									graph.cellLabelChanged(layer, mxResources.get('untitledLayer'));
+								}
+							}
+							else
+							{
+								refresh();
+							}
+						}
+					};
+
+					mxEvent.addListener(span, 'keydown', function(evt)
+					{
+						if (evt.keyCode == 13 || evt.keyCode == 27)
+						{
+							stopEditing(evt.keyCode == 13);
+							mxEvent.consume(evt);
+						}
+					});
+
+					mxEvent.addListener(span, 'blur', function(evt)
+					{
+						stopEditing(true);
+						mxEvent.consume(evt);
+					});
+				}
+			}
+		}
+	};
+	
+	var menuLink = link.cloneNode(false);
+	menuLink.style.backgroundImage = 'url(' + Editor.menuImage + ')';
+	ldiv.appendChild(menuLink);
+
+	function isLayersVisible(layers)
+	{
+		var visible = true;
+
+		for (var i = 0; i < layers.length; i++)
+		{
+			if (!model.isVisible(layers[i]))
+			{
+				visible = false;
+				break;
+			}
+		}
+
+		return visible;
+	};
+
+	function selectLayers(selected)
+	{
+		var divs = layerDivs.getValues();
+		
+		for (var i = 0; i < divs.length; i++)
+		{
+			var cb = divs[i].getElementsByTagName('input')[0];
+			
+			if (cb != null)
+			{
+				cb.checked = (selected != null) ?
+					selected : !cb.checked;
+			}
+		}
+	};
+
+	function isLayerSelected(layer)
+	{
+		var div = layerDivs.get(layer);
+		
+		if (div != null)
+		{
+			var cb = div.getElementsByTagName('input')[0];
+			return cb != null && cb.checked;
+		}
+		
+		return false;
+	};
+
+	function getSelectedLayers(exclude, ignoreCheckbox)
+	{
+		var layers = [];
+
+		for (var i = 0; i < model.getChildCount(model.root); i++)
+		{
+			var layer = model.getChildAt(model.root, i);
+
+			if (layer != exclude && (ignoreCheckbox ||
+				isLayerSelected(layer)))
+			{
+				layers.push(layer);
+			}
+		}
+
+		return layers;
+	};
+
+	function setLayersLocked(layers, locked)
+	{
+		graph.setCellStyles('locked', (locked) ? '1' : '0', layers);
+
+		if (locked)
+		{
+			for (var i = 0; i < layers.length; i++)
+			{
+				graph.removeSelectionCells(model.getDescendants(layers[i]));
+			}
+		}
+	};
+
+	mxEvent.addListener(menuLink, 'click', function(evt)
+	{
+		if (graph.isEnabled())
+		{
+			editorUi.editor.graph.popupMenuHandler.hideMenu();
+			
+			var selectedLayers = getSelectedLayers();
+			var index = model.root.getIndex(selectionLayer);
+			var enabled = selectedLayers.length > 0 && graph.isEnabled();
+			var nothingIsSelected = mxResources.get('nothingIsSelected');
+			var layer = graph.getLayerForCells(graph.getSelectionCells());
+			var label = graph.convertValueToString(selectionLayer) || mxResources.get('background');
+
+			var menu = new mxPopupMenu(mxUtils.bind(this, function(menu, parent)
+			{
+				// Adds submenu for multiple selected layers
+				var layersSubmenu = menu.addItem(mxResources.get('layers'), null, null, parent);
+
+				menu.addItem(mxResources.get('selectAll'), null, mxUtils.bind(this, function()
+				{
+					refresh();
+					selectLayers(true);
+				}), layersSubmenu);
+
+				menu.addItem(mxResources.get('selectNone'), null, mxUtils.bind(this, function()
+				{
+					refresh();
+					selectLayers(false);
+				}), layersSubmenu, null, selectedLayers.length > 0).setAttribute('title',
+					selectedLayers.length > 0 ? mxResources.get('selectNone') : nothingIsSelected);
+
+				menu.addItem(mxResources.get('invertSelection'), null, mxUtils.bind(this, function()
+				{
+					refresh();
+					selectLayers();
+				}), layersSubmenu);
+
+				menu.addSeparator(layersSubmenu);
+				
+				menu.addItem(mxResources.get('show'), null, mxUtils.bind(this, function()
+				{
+					graph.setCellsVisible(selectedLayers, true);
+				}), layersSubmenu, null, enabled).setAttribute('title', selectedLayers.length > 0 ?
+						mxResources.get('show') : nothingIsSelected);
+				menu.addItem(mxResources.get('hide'), null, mxUtils.bind(this, function()
+				{
+					graph.setCellsVisible(selectedLayers, false);
+				}), layersSubmenu, null, enabled).setAttribute('title', selectedLayers.length > 0 ?
+						mxResources.get('hide') : nothingIsSelected);
+
+				menu.addSeparator(layersSubmenu);
+
+				menu.addItem(mxResources.get('lock'), null, mxUtils.bind(this, function()
+				{
+					setLayersLocked(getSelectedLayers(), true);
+				}), layersSubmenu, null, enabled).setAttribute('title', selectedLayers.length > 0 ?
+						mxResources.get('lock') : nothingIsSelected);
+
+				menu.addItem(mxResources.get('unlock'), null, mxUtils.bind(this, function()
+				{
+					setLayersLocked(getSelectedLayers(), false);
+				}), layersSubmenu, null, enabled).setAttribute('title', selectedLayers.length > 0 ?
+						mxResources.get('unlock') : nothingIsSelected);
+				
+				// Adds submenu for single layer operations
+				var layerSubmenu = menu.addItem(mxResources.get('currentLayer'), null, null, parent);
+				
+				menu.addItem(mxResources.get('duplicate'), null, mxUtils.bind(this, function()
+				{
+					selectLayers(false);
+					var newCell = null;
+					model.beginUpdate();
+					try
+					{
+						newCell = graph.cloneCell(selectionLayer);
+						graph.cellLabelChanged(newCell, mxResources.get('copyOf', [label]));
+						newCell = graph.addCell(newCell, model.root, index + 1);
+						newCell.setVisible(true);
+					}
+					finally
+					{
+						model.endUpdate();
+					}
+
+					if (newCell != null && !graph.isCellLocked(newCell))
+					{
+						graph.setDefaultParent(newCell);
+						graph.selectAll(newCell);
+					}
+				}), layerSubmenu);
+
+				menu.addItem(mxResources.get('addLayer'), null, mxUtils.bind(this, function(evt)
+				{
+					if (graph.isEnabled())
+					{
+						selectLayers(false);
+						model.beginUpdate();
+						var cell
+						
+						try
+						{
+							cell = graph.addCell(new mxCell(mxResources.get('untitledLayer')),
+								model.root, index + ((mxEvent.isShiftDown(evt) ? 0 : 1)));
+							graph.setDefaultParent(cell);
+						}
+						finally
+						{
+							model.endUpdate();
+						}
+
+						renameLayer(cell);
+					}
+					
+					mxEvent.consume(evt);
+				}), layerSubmenu);
+				
+				menu.addSeparator(layerSubmenu);
+
+				menu.addItem(mxResources.get('rename'), null, mxUtils.bind(this, function()
+				{
+					renameLayer(selectionLayer);
+				}), layerSubmenu);
+
+				menu.addItem(mxResources.get('editData'), null, mxUtils.bind(this, function()
+				{
+					editorUi.showDataDialog(selectionLayer);
+				}), layerSubmenu);
+
+				if (layerCount > 1)
+				{
+					menu.addSeparator(layerSubmenu);
+
+					menu.addItem(mxResources.get('toFront'), null, mxUtils.bind(this, function()
+					{
+						graph.addCell(selectionLayer, model.root, layerCount - 1);
+					}), layerSubmenu, null, index >= 0 && index < layerCount - 1);
+
+					menu.addItem(mxResources.get('toBack'), null, mxUtils.bind(this, function()
+					{
+						graph.addCell(selectionLayer, model.root, 0);
+					}), layerSubmenu, null, index > 0);
+
+					if (layerCount > 2)
+					{
+						menu.addItem(mxResources.get('bringForward'), null, mxUtils.bind(this, function()
+						{
+							graph.addCell(selectionLayer, model.root, index + 1);
+						}), layerSubmenu, null, index >= 0 && index < layerCount - 1);
+
+						menu.addItem(mxResources.get('sendBackward'), null, mxUtils.bind(this, function()
+						{
+							graph.addCell(selectionLayer, model.root, index - 1);
+						}), layerSubmenu, null, index > 0);
+					}
+				}
+
+				menu.addSeparator(layerSubmenu);
+
+				menu.addItem(mxResources.get('selectObjectsInLayer'), null, mxUtils.bind(this, function()
+				{
+					graph.clearSelection();
+					graph.selectAll(selectionLayer);
+				}), layerSubmenu, null, selectionLayer.children != null &&
+					selectionLayer.children.length > 0);
+
+				// Adds submenu for moving selection cells
+				var moveSubmenu = menu.addItem(mxResources.get('moveSelectionTo', ['']),
+					null, null, parent, null, !graph.isSelectionEmpty());
+				
+				if (graph.isSelectionEmpty())
+				{
+					moveSubmenu.setAttribute('title', mxResources.get('nothingIsSelected'));
+				}
+
+				for (var i = layerCount - 1; i >= 0; i--)
+				{
+					(mxUtils.bind(this, function(child)
+					{
+						var locked = mxUtils.getValue(graph.getCurrentCellStyle(child), 'locked', '0') == '1';
+
+						var item = menu.addItem(graph.convertValueToString(child) ||
+							mxResources.get('background'), null, mxUtils.bind(this, function()
+						{
+							if (!locked)
+							{
+								graph.moveCells(graph.getSelectionCells(), 0, 0, false, child);
+							}
+						}), moveSubmenu, null, !locked);
+
+						if (locked)
+						{
+							item.setAttribute('title', mxResources.get('locked'));
+						}
+
+						if (child == layer)
+						{
+							menu.addCheckmark(item, Editor.checkmarkImage);
+						}
+					}))(model.getChildAt(model.root, i));
+				}
+			}));
+			
+			menu.smartSeparators = true;
+			menu.showDisabled = true;
+			menu.autoExpand = true;
+			
+			// Disables autoexpand and destroys menu when hidden
+			menu.hideMenu = mxUtils.bind(this, function()
+			{
+				mxPopupMenu.prototype.hideMenu.apply(menu, arguments);
+				menu.destroy();
+			});
+		
+			var x = mxEvent.getClientX(evt);
+			var y = mxEvent.getClientY(evt);
+			menu.popup(x, y, null, evt);
+			
+			// Allows hiding by clicking on document
+			editorUi.setCurrentMenu(menu);
+			mxEvent.consume(evt);
+		}
+	});
+	
+	if (!graph.isEnabled())
+	{
+		menuLink.classList.add('mxDisabled');
+	}
+	
+	var removeLink = link.cloneNode(false);
+	removeLink.style.backgroundImage = 'url(' + Editor.trashImage + ')';
+	removeLink.setAttribute('title', mxResources.get('delete'));
+	ldiv.appendChild(removeLink);
 
 	mxEvent.addListener(removeLink, 'click', function(evt)
 	{
 		if (graph.isEnabled())
 		{
-			graph.model.beginUpdate();
+			model.beginUpdate();
 			try
 			{
-				var index = graph.model.root.getIndex(selectionLayer);
-				graph.removeCells([selectionLayer], false);
+				var index = model.root.getIndex(selectionLayer);
+				var layers = getSelectedLayers();
+
+				if (layers.length == 0)
+				{
+					layers.push(selectionLayer);
+				}
+				
+				graph.removeCells(layers, false);
 				
 				// Creates default layer if no layer exists
-				if (graph.model.getChildCount(graph.model.root) == 0)
+				if (model.getChildCount(model.root) == 0)
 				{
-					graph.model.add(graph.model.root, new mxCell());
+					model.add(model.root, new mxCell());
 					graph.setDefaultParent(null);
 				}
-				else if (index > 0 && index <= graph.model.getChildCount(graph.model.root))
+				else if (index > 0 && index <= model.getChildCount(model.root))
 				{
-					graph.setDefaultParent(graph.model.getChildAt(graph.model.root, index - 1));
+					graph.setDefaultParent(model.getChildAt(model.root, index - 1));
 				}
 				else
 				{
@@ -2109,7 +5110,7 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			}
 			finally
 			{
-				graph.model.endUpdate();
+				model.endUpdate();
 			}
 		}
 		
@@ -2118,180 +5119,102 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	
 	if (!graph.isEnabled())
 	{
-		removeLink.className = 'geButton mxDisabled';
+		removeLink.classList.add('mxDisabled');
 	}
-	
-	ldiv.appendChild(removeLink);
 
-	var insertLink = link.cloneNode();
-	insertLink.setAttribute('title', mxUtils.trim(mxResources.get('moveSelectionTo', ['...'])));
-	insertLink.innerHTML = '<div class="geSprite geSprite-insert" style="display:inline-block;"></div>';
+	div.appendChild(ldiv);
 	
-	mxEvent.addListener(insertLink, 'click', function(evt)
+	var dot = document.createElement('span');
+	dot.setAttribute('title', mxResources.get('allSelectedObjectsInThisLayer'));
+	dot.innerHTML = '&#8226;';
+	dot.style.padding = '0 2px';
+	dot.style.fontSize = '16pt';
+	dot.style.order = '1';
+	
+	function updateLayerDot()
 	{
-		if (graph.isEnabled() && !graph.isSelectionEmpty())
-		{
-			var offset = mxUtils.getOffset(insertLink);
-			
-			editorUi.showPopupMenu(mxUtils.bind(this, function(menu, parent)
-			{
-				for (var i = layerCount - 1; i >= 0; i--)
-				{
-					(mxUtils.bind(this, function(child)
-					{
-						var item = menu.addItem(graph.convertValueToString(child) ||
-								mxResources.get('background'), null, mxUtils.bind(this, function()
-						{
-							graph.moveCells(graph.getSelectionCells(), 0, 0, false, child);
-						}), parent);
-						
-						if (graph.getSelectionCount() == 1 && graph.model.isAncestor(child, graph.getSelectionCell()))
-						{
-							menu.addCheckmark(item, Editor.checkmarkImage);
-						}
-						
-					}))(graph.model.getChildAt(graph.model.root, i));
-				}
-			}), offset.x, offset.y + insertLink.offsetHeight, evt);
-		}
-	});
-
-	ldiv.appendChild(insertLink);
-	
-	var dataLink = link.cloneNode();
-	dataLink.innerHTML = '<div class="geSprite geSprite-dots" style="display:inline-block;"></div>';
-	dataLink.setAttribute('title', mxResources.get('rename'));
-
-	mxEvent.addListener(dataLink, 'click', function(evt)
-	{
-		if (graph.isEnabled())
-		{
-			editorUi.showDataDialog(selectionLayer);
-		}
+		var div = layerDivs.get(graph.getLayerForCells(graph.getSelectionCells()));
 		
-		mxEvent.consume(evt);
-	});
-	
-	if (!graph.isEnabled())
-	{
-		dataLink.className = 'geButton mxDisabled';
-	}
-
-	ldiv.appendChild(dataLink);
-	
-	function renameLayer(layer)
-	{
-		if (graph.isEnabled() && layer != null)
+		if (div != null)
 		{
-			var label = graph.convertValueToString(layer);
-			var dlg = new FilenameDialog(editorUi, label || mxResources.get('background'), mxResources.get('rename'), mxUtils.bind(this, function(newValue)
-			{
-				if (newValue != null)
-				{
-					graph.cellLabelChanged(layer, newValue);
-				}
-			}), mxResources.get('enterName'));
-			editorUi.showDialog(dlg.container, 300, 100, true, true);
-			dlg.init();
+			div.appendChild(dot);
+		}
+		else if (dot.parentNode != null)
+		{
+			dot.parentNode.removeChild(dot);
 		}
 	};
-	
-	var duplicateLink = link.cloneNode();
-	duplicateLink.innerHTML = '<div class="geSprite geSprite-duplicate" style="display:inline-block;"></div>';
-	
-	mxEvent.addListener(duplicateLink, 'click', function(evt)
-	{
-		if (graph.isEnabled())
-		{
-			var newCell = null;
-			graph.model.beginUpdate();
-			try
-			{
-				newCell = graph.cloneCell(selectionLayer);
-				graph.cellLabelChanged(newCell, mxResources.get('untitledLayer'));
-				newCell.setVisible(true);
-				newCell = graph.addCell(newCell, graph.model.root);
-				graph.setDefaultParent(newCell);
-			}
-			finally
-			{
-				graph.model.endUpdate();
-			}
 
-			if (newCell != null && !graph.isCellLocked(newCell))
-			{
-				graph.selectAll(newCell);
-			}
-		}
-	});
-	
-	if (!graph.isEnabled())
-	{
-		duplicateLink.className = 'geButton mxDisabled';
-	}
-
-	ldiv.appendChild(duplicateLink);
-
-	var addLink = link.cloneNode();
-	addLink.innerHTML = '<div class="geSprite geSprite-plus" style="display:inline-block;"></div>';
-	addLink.setAttribute('title', mxResources.get('addLayer'));
-	
-	mxEvent.addListener(addLink, 'click', function(evt)
-	{
-		if (graph.isEnabled())
-		{
-			graph.model.beginUpdate();
-			
-			try
-			{
-				var cell = graph.addCell(new mxCell(mxResources.get('untitledLayer')), graph.model.root);
-				graph.setDefaultParent(cell);
-			}
-			finally
-			{
-				graph.model.endUpdate();
-			}
-		}
-		
-		mxEvent.consume(evt);
-	});
-	
-	if (!graph.isEnabled())
-	{
-		addLink.className = 'geButton mxDisabled';
-	}
-	
-	ldiv.appendChild(addLink);
-	div.appendChild(ldiv);	
-	
 	function refresh()
 	{
-		layerCount = graph.model.getChildCount(graph.model.root)
-		listDiv.innerHTML = '';
+		if (graph.isEnabled())
+		{
+			removeLink.classList.remove('mxDisabled');
+			menuLink.classList.remove('mxDisabled');
+			addLink.classList.remove('mxDisabled');
+		}
+		else
+		{
+			removeLink.classList.add('mxDisabled');
+			menuLink.classList.add('mxDisabled');
+			addLink.classList.add('mxDisabled');
+		}
 
-		function addLayer(index, label, child, defaultParent)
+		layerCount = model.getChildCount(model.root)
+		listDiv.innerText = '';
+		var newLayerDivs = new mxDictionary();
+		
+		function addLayer(index, label, child, defaultParent, selected)
 		{
 			var ldiv = document.createElement('div');
 			ldiv.className = 'geToolbarContainer';
-
 			ldiv.style.overflow = 'hidden';
 			ldiv.style.position = 'relative';
-			ldiv.style.padding = '4px';
-			ldiv.style.height = '22px';
-			ldiv.style.display = 'block';
-			ldiv.style.backgroundColor = (Dialog.backdropColor == 'white') ? 'whiteSmoke' : Dialog.backdropColor;
+			ldiv.style.height = '30px';
+			ldiv.style.display = 'flex';
+			ldiv.style.padding = '0 8px';
+			ldiv.style.alignItems = 'center';
+			ldiv.style.justifyContent = 'flex-start';
 			ldiv.style.borderWidth = '0px 0px 1px 0px';
-			ldiv.style.borderColor = '#c3c3c3';
 			ldiv.style.borderStyle = 'solid';
 			ldiv.style.whiteSpace = 'nowrap';
-			ldiv.setAttribute('title', label);
+			ldiv.style.cursor = 'move';
+			ldiv.setAttribute('draggable', 'true');
+			ldiv.setAttribute('title', label  +
+				' (' + child.getId() + ')');
+			newLayerDivs.put(child, ldiv);
+
+			var cb = document.createElement('input');
+			cb.setAttribute('type', 'checkbox');
+			cb.style.cursor = 'pointer';
+			cb.style.order = '2';
+			cb.checked = selected;
+			cb.style.display = (graph.isEnabled()) ? '' : 'none';
+			ldiv.appendChild(cb);
 			
-			var left = document.createElement('div');
-			left.style.display = 'inline-block';
-			left.style.width = '100%';
-			left.style.textOverflow = 'ellipsis';
-			left.style.overflow = 'hidden';
-			
+			var div = document.createElement('div');
+			div.style.display = 'flex';
+			div.style.alignItems = 'center';
+			div.style.minWidth = '0';
+			div.style.flexGrow = '1';
+
+			mxEvent.addListener(cb, 'click', function(evt)
+			{
+				if (mxEvent.isShiftDown(evt))
+				{
+					selectLayers(cb.checked);
+				}
+			});
+
+			var title = document.createElement('div');
+			mxUtils.write(title, label);
+			title.style.whiteSpace = 'nowrap';
+			title.style.overflow = 'hidden';
+			title.style.textOverflow = 'ellipsis';
+			title.style.marginRight = '4px';
+			title.style.padding = '4px';
+			title.style.flexGrow = '1';
+
 			mxEvent.addListener(ldiv, 'dragover', function(evt)
 			{
 				evt.dataTransfer.dropEffect = 'move';
@@ -2302,21 +5225,41 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			
 			mxEvent.addListener(ldiv, 'dragstart', function(evt)
 			{
-				dragSource = ldiv;
-				
-				// Workaround for no DnD on DIV in FF
-				if (mxClient.IS_FF)
+				if (title.contentEditable != 'true')
 				{
-					// LATER: Check what triggers a parse as XML on this in FF after drop
-					evt.dataTransfer.setData('Text', '<layer/>');
+					dragSource = ldiv;
+					
+					// Workaround for no DnD on DIV in FF
+					if (mxClient.IS_FF)
+					{
+						// LATER: Check what triggers a parse as XML on this in FF after drop
+						evt.dataTransfer.setData('Text', '<layer/>');
+					}
 				}
 			});
 			
 			mxEvent.addListener(ldiv, 'dragend', function(evt)
 			{
-				if (dragSource != null && dropIndex != null)
+				var layers = getSelectedLayers();
+
+				if (dragSource != null && dropIndex != null &&
+					model.getChildCount(model.root) > 1)
 				{
-					graph.addCell(child, graph.model.root, dropIndex);
+					layers = (layers.length == 0) ? [child] : layers;
+
+					// Moves all selected layers
+					model.beginUpdate();
+					try
+					{
+						for (var i = 0; i < layers.length; i++)
+						{
+							graph.addCell(layers[i], model.root, dropIndex);
+						}
+					}
+					finally
+					{
+						model.endUpdate();
+					}
 				}
 
 				dragSource = null;
@@ -2325,165 +5268,129 @@ var LayersWindow = function(editorUi, x, y, w, h)
 				evt.preventDefault();
 			});
 
-			var btn = document.createElement('img');
-			btn.setAttribute('draggable', 'false');
-			btn.setAttribute('align', 'top');
-			btn.setAttribute('border', '0');
-			btn.style.padding = '4px';
-			btn.setAttribute('title', mxResources.get('lockUnlock'));
+			var visible = model.isVisible(child);
+			var inp = document.createElement('img');
+			inp.className = 'geAdaptiveAsset';
+			inp.style.width = '16px';
+			inp.style.padding = '0px 6px 0 0';
+			inp.style.cursor = 'pointer';
+			inp.setAttribute('title', mxResources.get(
+				visible ? 'hide' : 'show'));
 
-			var style = graph.getCurrentCellStyle(child);
-
-			if (mxUtils.getValue(style, 'locked', '0') == '1')
+			if (visible)
 			{
-				btn.setAttribute('src', Dialog.prototype.lockedImage);
+				inp.setAttribute('src', Editor.visibleImage);
+				mxUtils.setOpacity(div, 90);
 			}
 			else
 			{
-				btn.setAttribute('src', Dialog.prototype.unlockedImage);
+				inp.setAttribute('src', Editor.hiddenImage);
+				mxUtils.setOpacity(div, 40);
+			}
+
+			if (!graph.isEnabled())
+			{
+				mxUtils.setOpacity(inp, 50);
+			}
+
+			div.appendChild(inp);
+
+			mxEvent.addListener(inp, 'click', function(evt)
+			{
+				if (graph.isEnabled())
+				{
+					if (mxEvent.isShiftDown(evt))
+					{
+						var others = getSelectedLayers(child, true);
+						graph.setCellsVisible(others, !isLayersVisible(others));
+					}
+					else
+					{
+						graph.setCellsVisible([child], !visible);
+					}
+				}
+
+				mxEvent.consume(evt);
+			});
+
+			var btn = inp.cloneNode(false);
+			var style = graph.getCurrentCellStyle(child);
+			btn.setAttribute('title', mxResources.get('lockUnlock'));
+			var locked = mxUtils.getValue(style, 'locked', '0') == '1';
+
+			if (locked)
+			{
+				btn.setAttribute('src', Editor.lockedImage);
+				mxUtils.setOpacity(btn, 90);
+				ldiv.style.color = 'red';
+			}
+			else
+			{
+				btn.setAttribute('src', Editor.unlockedImage);
+				mxUtils.setOpacity(btn, 40);
 			}
 			
 			if (graph.isEnabled())
 			{
 				btn.style.cursor = 'pointer';
 			}
+
+			function toggleLock(allLayers)
+			{
+				var value = null;
+				
+				model.beginUpdate();
+				try
+				{
+					value = (locked) ? null : '1';
+
+					if (allLayers)
+					{
+						var parent = model.getParent(child);
+
+						for (var i = 0; i < model.getChildCount(parent); i++)
+						{
+							graph.setCellStyles('locked', value,
+								[model.getChildAt(parent, i)]);
+						}
+					}
+					else
+					{
+						graph.setCellStyles('locked', value, [child]);
+					}
+				}
+				finally
+				{
+					model.endUpdate();
+				}
+
+				if (value == '1')
+				{
+					graph.removeSelectionCells(model.getDescendants(child));
+				}
+			};
 			
 			mxEvent.addListener(btn, 'click', function(evt)
 			{
 				if (graph.isEnabled())
 				{
-					var value = null;
-					
-					graph.getModel().beginUpdate();
-					try
-					{
-			    		value = (mxUtils.getValue(style, 'locked', '0') == '1') ? null : '1';
-			    		graph.setCellStyles('locked', value, [child]);
-					}
-					finally
-					{
-						graph.getModel().endUpdate();
-					}
-
-					if (value == '1')
-					{
-						graph.removeSelectionCells(graph.getModel().getDescendants(child));
-					}
-					
+					setLayersLocked(mxEvent.isShiftDown(evt) ?
+						getSelectedLayers(null, true) : [child],
+						!locked);
 					mxEvent.consume(evt);
 				}
 			});
 
-			left.appendChild(btn);
-
-			var inp = document.createElement('input');
-			inp.setAttribute('type', 'checkbox');
-			inp.setAttribute('title', mxResources.get(graph.model.isVisible(child) ?
-				'hide' : 'show'));
-			inp.style.marginLeft = '4px';
-			inp.style.marginRight = '6px';
-			inp.style.marginTop = '4px';
-			left.appendChild(inp);
+			div.appendChild(btn);
+			div.appendChild(title);
+			ldiv.appendChild(div);
 			
-			if (graph.model.isVisible(child))
-			{
-				inp.setAttribute('checked', 'checked');
-				inp.defaultChecked = true;
-			}
-
-			mxEvent.addListener(inp, 'click', function(evt)
-			{
-				graph.model.setVisible(child, !graph.model.isVisible(child));
-				mxEvent.consume(evt);
-			});
-
-			mxUtils.write(left, label);
-			ldiv.appendChild(left);
-			
-			if (graph.isEnabled())
-			{
-				// Fallback if no drag and drop is available
-				if (mxClient.IS_TOUCH || mxClient.IS_POINTER ||
-					(mxClient.IS_IE && document.documentMode < 10))
-				{
-					var right = document.createElement('div');
-					right.style.display = 'block';
-					right.style.textAlign = 'right';
-					right.style.whiteSpace = 'nowrap';
-					right.style.position = 'absolute';
-					right.style.right = '6px';
-					right.style.top = '6px';
-		
-					// Poor man's change layer order
-					if (index > 0)
-					{
-						var img2 = document.createElement('a');
-						
-						img2.setAttribute('title', mxResources.get('toBack'));
-						
-						img2.className = 'geButton';
-						img2.style.cssFloat = 'none';
-						img2.innerHTML = '&#9660;';
-						img2.style.width = '14px';
-						img2.style.height = '14px';
-						img2.style.fontSize = '14px';
-						img2.style.margin = '0px';
-						img2.style.marginTop = '-1px';
-						right.appendChild(img2);
-						
-						mxEvent.addListener(img2, 'click', function(evt)
-						{
-							if (graph.isEnabled())
-							{
-								graph.addCell(child, graph.model.root, index - 1);
-							}
-							
-							mxEvent.consume(evt);
-						});
-					}
-		
-					if (index >= 0 && index < layerCount - 1)
-					{
-						var img1 = document.createElement('a');
-						
-						img1.setAttribute('title', mxResources.get('toFront'));
-						
-						img1.className = 'geButton';
-						img1.style.cssFloat = 'none';
-						img1.innerHTML = '&#9650;';
-						img1.style.width = '14px';
-						img1.style.height = '14px';
-						img1.style.fontSize = '14px';
-						img1.style.margin = '0px';
-						img1.style.marginTop = '-1px';
-						right.appendChild(img1);
-						
-						mxEvent.addListener(img1, 'click', function(evt)
-						{
-							if (graph.isEnabled())
-							{
-								graph.addCell(child, graph.model.root, index + 1);
-							}
-							
-							mxEvent.consume(evt);
-						});
-					}
-					
-					ldiv.appendChild(right);
-				}
-				
-				if (mxClient.IS_SVG && (!mxClient.IS_IE || document.documentMode >= 10))
-				{
-					ldiv.setAttribute('draggable', 'true');
-					ldiv.style.cursor = 'move';
-				}
-			}
-
 			mxEvent.addListener(ldiv, 'dblclick', function(evt)
 			{
 				var nodeName = mxEvent.getSource(evt).nodeName;
 				
-				if (nodeName != 'INPUT' && nodeName != 'IMG')
+				if (nodeName != 'INPUT' && nodeName != 'IMG' &&
+					title.contentEditable != 'true')
 				{
 					renameLayer(child);
 					mxEvent.consume(evt);
@@ -2492,64 +5399,58 @@ var LayersWindow = function(editorUi, x, y, w, h)
 
 			if (graph.getDefaultParent() == child)
 			{
-				ldiv.style.background =  (Dialog.backdropColor == 'white') ? '#e6eff8' : '#505759';
+				ldiv.classList.add('geActivePage');
 				ldiv.style.fontWeight = (graph.isEnabled()) ? 'bold' : '';
 				selectionLayer = child;
 			}
-			else
+
+			mxEvent.addListener(ldiv, 'click', function(evt)
 			{
-				mxEvent.addListener(ldiv, 'click', function(evt)
+				if (graph.isEnabled() && title.contentEditable != 'true' &&
+					mxEvent.getSource(evt) != cb)
 				{
-					if (graph.isEnabled())
+					graph.setDefaultParent(defaultParent);
+					graph.view.setCurrentRoot(null);
+
+					if (mxEvent.isShiftDown(evt))
 					{
-						graph.setDefaultParent(defaultParent);
-						graph.view.setCurrentRoot(null);
+						graph.clearSelection();
+						graph.selectAll(selectionLayer);
 					}
-				});
-			}
+
+					mxEvent.consume(evt);
+				}
+			});
 			
 			listDiv.appendChild(ldiv);
 		};
 		
-		// Cannot be moved or deleted
 		for (var i = layerCount - 1; i >= 0; i--)
 		{
 			(mxUtils.bind(this, function(child)
 			{
 				addLayer(i, graph.convertValueToString(child) ||
-					mxResources.get('background'), child, child);
-			}))(graph.model.getChildAt(graph.model.root, i));
+					mxResources.get('background'), child, child,
+					isLayerSelected(child));
+			}))(model.getChildAt(model.root, i));
 		}
-		
-		var label = graph.convertValueToString(selectionLayer) || mxResources.get('background');
-		removeLink.setAttribute('title', mxResources.get('removeIt', [label]));
-		duplicateLink.setAttribute('title', mxResources.get('duplicateIt', [label]));
-		dataLink.setAttribute('title', mxResources.get('editData'));
 
-		if (graph.isSelectionEmpty())
-		{
-			insertLink.className = 'geButton mxDisabled';
-		}
+		layerDivs = newLayerDivs;
+		updateLayerDot();
 	};
 
 	refresh();
-	graph.model.addListener(mxEvent.CHANGE, refresh);
+	model.addListener(mxEvent.CHANGE, refresh);
 	graph.addListener('defaultParentChanged', refresh);
+	editorUi.addListener('lockedChanged', refresh);
 
 	graph.selectionModel.addListener(mxEvent.CHANGE, function()
 	{
-		if (graph.isSelectionEmpty())
-		{
-			insertLink.className = 'geButton mxDisabled';
-		}
-		else
-		{
-			insertLink.className = 'geButton';
-		}
+		updateLayerDot();
 	});
 
 	this.window = new mxWindow(mxResources.get('layers'), div, x, y, w, h, true, true);
-	this.window.minimumSize = new mxRectangle(0, 0, 120, 120);
+	this.window.minimumSize = new mxRectangle(0, 0, 170, 120);
 	this.window.destroyOnClose = false;
 	this.window.setMaximizable(false);
 	this.window.setResizable(true);
@@ -2568,34 +5469,5 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	
 	// Make refresh available via instance
 	this.refreshLayers = refresh;
-	
-	this.window.setLocation = function(x, y)
-	{
-		var iw = window.innerWidth || document.body.clientWidth || document.documentElement.clientWidth;
-		var ih = window.innerHeight || document.body.clientHeight || document.documentElement.clientHeight;
-		
-		x = Math.max(0, Math.min(x, iw - this.table.clientWidth));
-		y = Math.max(0, Math.min(y, ih - this.table.clientHeight - 48));
-
-		if (this.getX() != x || this.getY() != y)
-		{
-			mxWindow.prototype.setLocation.apply(this, arguments);
-		}
-	};
-	
-	var resizeListener = mxUtils.bind(this, function()
-	{
-		var x = this.window.getX();
-		var y = this.window.getY();
-		
-		this.window.setLocation(x, y);
-	});
-	
-	mxEvent.addListener(window, 'resize', resizeListener);
-
-	this.destroy = function()
-	{
-		mxEvent.removeListener(window, 'resize', resizeListener);
-		this.window.destroy();
-	}
+	editorUi.installResizeHandler(this, true);
 };

@@ -8,20 +8,6 @@
   </welcome-file-list>
   <servlet>
     <description/>
-    <display-name>SaveServlet</display-name>
-    <servlet-name>SaveServlet</servlet-name>
-    <servlet-class>com.mxgraph.online.SaveServlet</servlet-class>
-  </servlet>
-  <servlet-mapping>
-    <servlet-name>SaveServlet</servlet-name>
-    <url-pattern>/SaveServlet</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>SaveServlet</servlet-name>
-    <url-pattern>/save</url-pattern>
-  </servlet-mapping>
-  <servlet>
-    <description/>
     <display-name>ProxyServlet</display-name>
     <servlet-name>ProxyServlet</servlet-name>
     <servlet-class>com.mxgraph.online.ProxyServlet</servlet-class>
@@ -52,16 +38,6 @@
   </servlet-mapping>
   <servlet>
     <description/>
-    <display-name>GoogleGadgetServlet</display-name>
-    <servlet-name>GoogleGadgetServlet</servlet-name>
-    <servlet-class>com.mxgraph.online.GoogleGadgetServlet</servlet-class>
-  </servlet>
-  <servlet-mapping>
-    <servlet-name>GoogleGadgetServlet</servlet-name>
-    <url-pattern>/gadget.xml</url-pattern>
-  </servlet-mapping>
-  <servlet>
-    <description/>
     <display-name>ImgurRedirect</display-name>
     <servlet-name>ImgurRedirect</servlet-name>
     <servlet-class>com.mxgraph.online.ImgurRedirectServlet</servlet-class>
@@ -79,16 +55,6 @@
   <servlet-mapping>
     <servlet-name>GitHubAuthServlet</servlet-name>
     <url-pattern>/github2</url-pattern>
-  </servlet-mapping>
-  <servlet>
-    <description/>
-    <display-name>AppShortcutServlet</display-name>
-    <servlet-name>AppShortcutServlet</servlet-name>
-    <servlet-class>com.mxgraph.online.AppShortcutServlet</servlet-class>
-  </servlet>
-  <servlet-mapping>
-    <servlet-name>AppShortcutServlet</servlet-name>
-    <url-pattern>/app</url-pattern>
   </servlet-mapping>
   <servlet>
     <display-name>LogServlet</display-name>
@@ -118,16 +84,6 @@
   <servlet-mapping>
     <servlet-name>GoogleAuthServlet</servlet-name>
     <url-pattern>/google</url-pattern>
-  </servlet-mapping>
-  <servlet>
-    <description/>
-    <display-name>ConverterServlet</display-name>
-    <servlet-name>ConverterServlet</servlet-name>
-    <servlet-class>com.mxgraph.online.ConverterServlet</servlet-class>
-  </servlet>
-  <servlet-mapping>
-    <servlet-name>ConverterServlet</servlet-name>
-    <url-pattern>/convert</url-pattern>
   </servlet-mapping>
   <servlet>
     <description/>
@@ -170,5 +126,9 @@
   <mime-mapping>
     <extension>manifest</extension>
     <mime-type>text/cache-manifest</mime-type>
+  </mime-mapping>
+  <mime-mapping>
+    <extension>mjs</extension>
+    <mime-type>text/javascript</mime-type>
   </mime-mapping>
 </web-app>

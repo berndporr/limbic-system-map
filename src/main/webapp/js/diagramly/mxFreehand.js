@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
 function mxFreehand(graph)
 {
 	// Graph must have a container
@@ -8,8 +12,14 @@ function mxFreehand(graph)
 		return;
 	}
 	
+	// Stops drawing on escape
+	graph.addListener(mxEvent.ESCAPE, mxUtils.bind(this, function()
+	{
+		this.stopDrawing();
+	}));
+	
 	//Code inspired by https://stackoverflow.com/questions/40324313/svg-smooth-freehand-drawing
-	var bufferSize = mxFreehand.prototype.NORMAL_SMOOTHING;
+	var bufferSize = mxFreehand.prototype.MILD_SMOOTHING;
 	var path = null;
 	var partPathes = [];
 	var strPath;
@@ -17,12 +27,33 @@ function mxFreehand(graph)
 	var lastPart;
 	var closedPath = false; 
 	var autoClose = true;
-	var autoInsert = false;
-	var autoScroll = false;
-	var openFill = false;
+	var autoInsert = true;
+	var autoScroll = true;
+	var openFill = true;
 	var buffer = []; // Contains the last positions of the mouse cursor
 	var enabled = false;
-	var stopClickEnabled = true
+	var stopClickEnabled = false;
+	var selectInserted = false;
+	var currentStrokeColor = 'default';
+	var perfectFreehandOptions = {
+		size: 5,
+		thinning: 0.5,
+		smoothing: 0.5,
+		streamline: 0.5,
+	//	easing: (t) => t,
+		start: {
+		  taper: 0,
+	//	  easing: (t) => t,
+		  cap: true
+		},
+		end: {
+		  taper: 0,
+	//	  easing: (t) => t,
+		  cap: true
+		}
+	};
+
+	var perfectFreehandMode = true;
 
 	this.setClosedPath = function(isClosed)//TODO add closed settings
 	{
@@ -53,19 +84,59 @@ function mxFreehand(graph)
 	{
 		stopClickEnabled = enabled;
 	};
-	
-	this.setSmoothing = function(smoothing)//TODO add smoothing settings
+
+	this.setSelectInserted = function(value)
+	{
+		selectInserted = value;
+	};
+
+	this.setSmoothing = function(smoothing)
 	{
 		bufferSize = smoothing;
 	};
+
+	this.getSmoothing = function()
+	{
+		return bufferSize;
+	};
 	
+	this.setPerfectFreehandMode = function(value)
+	{
+		perfectFreehandMode = value;
+	};
+
+	this.isPerfectFreehandMode = function()
+	{
+		return perfectFreehandMode;
+	};
+
+	this.setBrushSize = function(value)
+	{
+		perfectFreehandOptions.size = value;
+	};
+
+	this.getBrushSize = function()
+	{
+		return perfectFreehandOptions.size;
+	};
+
 	var setEnabled = function(isEnabled)
 	{
 		enabled = isEnabled;
 		graph.getRubberband().setEnabled(!isEnabled);
 		graph.graphHandler.setSelectEnabled(!isEnabled);
 		graph.graphHandler.setMoveEnabled(!isEnabled);
-		graph.container.style.cursor = (isEnabled) ? 'crosshair' : '';
+		graph.panningHandler.setPinchEnabled(!isEnabled);
+
+		if (isEnabled)
+		{
+			graph.container.classList.add('geFreehandMode');
+		}
+		else
+		{
+			graph.container.classList.remove('geFreehandMode');
+		}
+
 		graph.fireEvent(new mxEventObject('freehandStateChanged'));
 	};
 	
@@ -78,6 +149,11 @@ function mxFreehand(graph)
 	{
 		return enabled;
 	};
+
+	this.isActive = function()
+	{
+		return path != null;
+	};
 	
 	var endPath = mxUtils.bind(this, function(e)
 	{
@@ -88,7 +164,7 @@ function mxFreehand(graph)
 	    	// Click stops drawing
 	    	var doStop = stopClickEnabled && drawPoints.length > 0 &&
 	    		lastPart != null && lastPart.length < 2;
-	    	
+			
 			if (!doStop)
 			{
 				drawPoints.push.apply(drawPoints, lastPart);
@@ -104,7 +180,7 @@ function mxFreehand(graph)
 				this.stopDrawing();
 			}
 			
-			if (autoInsert && lastLength >= 2)
+			if (autoInsert && (!doStop || lastLength >= 2))
 			{
 				this.startDrawing();
 			}
@@ -112,16 +188,72 @@ function mxFreehand(graph)
 	        mxEvent.consume(e);
 	    }
 	});
-	
+
+	// Used to retrieve default styles
+	var edge = new mxCell();
+	edge.edge = true;
+
+	this.getStrokeColor = function(allowDefault)
+	{
+		var strokeColor = (currentStrokeColor != null) ? currentStrokeColor :
+			mxUtils.getValue(graph.currentVertexStyle, mxConstants.STYLE_STROKECOLOR,
+			mxUtils.getValue(graph.getCurrentCellStyle(edge),
+			mxConstants.STYLE_STROKECOLOR, '#000'))
+
+		if (strokeColor == 'default' && !allowDefault)
+		{
+			strokeColor = graph.shapeForegroundColor;
+		}
+
+		return strokeColor;
+	};
+
+	this.setStrokeColor = function(value)
+	{
+		currentStrokeColor = value;
+	};
+
 	this.createStyle = function(stencil)
 	{
-		return mxConstants.STYLE_SHAPE + '=' + stencil + ';fillColor=none;';
+		var style = ';fillColor=none;';
+
+		if (perfectFreehandMode)
+		{
+			style = ';lineShape=1;';
+		}
+
+		style += 'strokeColor=' + this.getStrokeColor(true) + ';';
+
+		return mxConstants.STYLE_SHAPE + '=' + stencil + style;
 	};
 	
 	this.stopDrawing = function() 
 	{
-	    if (partPathes.length > 0) 
+	    if (partPathes.length > 0)
 	    {
+			if (perfectFreehandMode)
+			{
+				var tmpPoints = [];
+				
+				for (var i = 0; i < drawPoints.length; i++) 
+				{
+					if (drawPoints[i] != null)
+					{
+						tmpPoints.push([drawPoints[i].x, drawPoints[i].y]);
+					}
+				}
+
+				var output = PerfectFreehand.getStroke(tmpPoints, perfectFreehandOptions);
+				drawPoints = [];
+				
+				for (var i = 0; i < output.length; i++) 
+				{
+					drawPoints.push({x: output[i][0], y: output[i][1]});
+				}
+				
+				drawPoints.push(null);
+			}
+
 	        var maxX = drawPoints[0].x, minX = drawPoints[0].x, maxY = drawPoints[0].y, minY = drawPoints[0].y;
 	        
 	        for (var i = 1; i < drawPoints.length; i++) 
@@ -135,7 +267,7 @@ function mxFreehand(graph)
 	        }
 	        
 	        var w = maxX - minX, h = maxY - minY;
-	        
+
 	        if (w > 0 && h > 0)
 	        {
 		        var xScale = 100 / w;
@@ -191,28 +323,34 @@ function mxFreehand(graph)
 		        }
 		        
 		        drawShape += '</foreground></shape>';
-		        
-                var style = this.createStyle('stencil(' + Graph.compress(drawShape) + ')');
-                var s = graph.view.scale;
-            	var tr = graph.view.translate;
-            	
-                var cell = new mxCell('', new mxGeometry(minX / s - tr.x, minY / s - tr.y, w / s, h / s), style);
-                cell.vertex = 1;
-                
-                graph.model.beginUpdate();
-                try
+
+				if (graph.isEnabled() && !graph.isCellLocked(graph.getDefaultParent()))
 				{
-                	cell = graph.addCell(cell);
+	                var style = this.createStyle('stencil(' + Graph.compress(drawShape) + ')');
+	                var s = graph.view.scale;
+	            	var tr = graph.view.translate;
+	            	
+	                var cell = new mxCell('', new mxGeometry(minX / s - tr.x, minY / s - tr.y, w / s, h / s), style);
+	                cell.vertex = 1;
+	                
+	                graph.model.beginUpdate();
+	                try
+					{
+	                	cell = graph.addCell(cell);
+		                
+		                graph.fireEvent(new mxEventObject('cellsInserted', 'cells', [cell]));
+		                graph.fireEvent(new mxEventObject('freehandInserted', 'cell', cell));
+					}
+	                finally
+					{
+	                	graph.model.endUpdate();
+					}
+					
+					if (selectInserted)
+					{
+						graph.setSelectionCells([cell]);
+					}
 				}
-                finally
-				{
-                	graph.model.endUpdate();
-				}
-                
-                graph.fireEvent(new mxEventObject('cellsInserted', 'cells', [cell]));
-                graph.fireEvent(new mxEventObject('freehandInserted', 'cell', cell));
-                //While mouse is down, we cannot select!
-                setTimeout(function(){graph.setSelectionCells([cell]); }, 10);
 	        }
 
 	        for (var i = 0; i < partPathes.length; i++)
@@ -228,73 +366,82 @@ function mxFreehand(graph)
         setEnabled(false);
 	};
 
-	// Stops all interactions if freehand is enabled
+	// Stops all shape interactions if freehand is enabled
 	graph.addListener(mxEvent.FIRE_MOUSE_EVENT, mxUtils.bind(this, function(sender, evt)
 	{
-		var evtName = evt.getProperty('eventName');
-		var me = evt.getProperty('event');
-		
-		if (evtName == mxEvent.MOUSE_MOVE && enabled)
+		if (enabled)
 		{
-			if (me.sourceState != null)
-			{
-				me.sourceState.setCursor('crosshair');
-			}
-			
-			me.consume();
+			evt.getProperty('event').consume();
 		}
 	}));
-	
-	// Used to retrieve default styles
-	var edge = new mxCell();
-	edge.edge = true;
+
+	// Prevents pinch-zoom gestures while freehand drawing is active
+	graph.addListener(mxEvent.GESTURE, mxUtils.bind(this, function(sender, evt)
+	{
+		if (enabled)
+		{
+			mxEvent.consume(evt.getProperty('event'));
+		}
+	}));
 	
 	// Implements a listener for hover and click handling
 	graph.addMouseListener(
 	{
 	    mouseDown: mxUtils.bind(this, function(sender, me)
 	    {
-			var e = me.getEvent();
-			
-			if (!enabled || mxEvent.isPopupTrigger(e) || mxEvent.isMultiTouchEvent(e))
-			{
-				return;
-			}
-			
-			var defaultStyle = graph.getCurrentCellStyle(edge);
-			var strokeWidth = parseFloat(graph.currentVertexStyle[mxConstants.STYLE_STROKEWIDTH] || 1);
-			strokeWidth = Math.max(1, strokeWidth * graph.view.scale);
-		    path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-		    path.setAttribute('fill', 'none');
-		    path.setAttribute('stroke', mxUtils.getValue(graph.currentVertexStyle, mxConstants.STYLE_STROKECOLOR,
-				mxUtils.getValue(defaultStyle, mxConstants.STYLE_STROKECOLOR, '#000')));
-		    path.setAttribute('stroke-width', strokeWidth);
-		    
-		    if (graph.currentVertexStyle[mxConstants.STYLE_DASHED] == '1')
+			if (graph.isEnabled() && !graph.isCellLocked(graph.getDefaultParent()))
 		    {
-		    	var dashPattern = graph.currentVertexStyle[mxConstants.STYLE_DASH_PATTERN] || '3 3';
-		    	
-		    	dashPattern = dashPattern.split(' ').map(function(p)
+				var e = me.getEvent();
+				
+				// Ignores gestures that started forced panning (eg. space+drag)
+				if (!enabled || mxEvent.isPopupTrigger(e) ||
+					mxEvent.isMiddleMouseButton(e) ||
+					mxEvent.isMultiTouchEvent(e) ||
+					(graph.panningHandler != null &&
+					graph.panningHandler.isActive()))
 				{
-		    		return parseFloat(p) * strokeWidth;
-				}).join(' ');
-		    	path.setAttribute('stroke-dasharray', dashPattern);
-		    }
-		    
-		    buffer = [];
-		    var pt = getMousePosition(e);
-		    appendToBuffer(pt);
-		    strPath = 'M' + pt.x + ' ' + pt.y;
-		    drawPoints.push(pt);
-		    lastPart = [];
-		    path.setAttribute('d', strPath);
-		    svgElement.appendChild(path);
+					return;
+				}
+				
+				var strokeWidth = parseFloat(graph.currentVertexStyle[mxConstants.STYLE_STROKEWIDTH] || 1);
+				strokeWidth = Math.max(1, strokeWidth * graph.view.scale);
+				var strokeColor = this.getStrokeColor();
 
-			me.consume();
+			    path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+			    path.setAttribute('fill', perfectFreehandMode? strokeColor : 'none');
+				path.setAttribute('pointer-events', 'none');
+			    path.setAttribute('stroke', strokeColor);
+			    path.setAttribute('stroke-width', strokeWidth);
+			    
+			    if (graph.currentVertexStyle[mxConstants.STYLE_DASHED] == '1')
+			    {
+			    	var dashPattern = graph.currentVertexStyle[mxConstants.STYLE_DASH_PATTERN] || '3 3';
+			    	
+			    	dashPattern = dashPattern.split(' ').map(function(p)
+					{
+			    		return parseFloat(p) * strokeWidth;
+					}).join(' ');
+			    	path.setAttribute('stroke-dasharray', dashPattern);
+			    }
+			    
+			    buffer = [];
+			    var pt = getMousePosition(e);
+			    appendToBuffer(pt);
+			    strPath = 'M' + pt.x + ' ' + pt.y;
+			    drawPoints.push(pt);
+			    lastPart = [];
+			    path.setAttribute('d', perfectFreehandMode? 
+					PerfectFreehand.getSvgPathFromStroke([[pt.x, pt.y]], perfectFreehandOptions)
+					: strPath);
+			    svgElement.appendChild(path);
+	
+				me.consume();
+			}
 	    }),
 	    mouseMove: mxUtils.bind(this, function(sender, me)
 	    {
-		    if (path) 
+		    if (path != null && graph.isEnabled() &&
+				!graph.isCellLocked(graph.getDefaultParent()))
 		    {
 	    		var e = me.getEvent();
 				var pt = getMousePosition(e);
@@ -312,7 +459,8 @@ function mxFreehand(graph)
 	    }),
 	    mouseUp: mxUtils.bind(this, function(sender, me)
 	    {
-			if (path) 
+			if (path != null && graph.isEnabled() &&
+				!graph.isCellLocked(graph.getDefaultParent())) 
 			{
 				endPath(me.getEvent());
 				me.consume();
@@ -370,23 +518,47 @@ function mxFreehand(graph)
 
 	    if (pt) 
 	    {
-	        // Get the smoothed part of the path that will not change
-	        strPath += ' L' + pt.x + ' ' + pt.y;
 	        drawPoints.push(pt);
-	        // Get the last part of the path (close to the current mouse position)
-	        // This part will change if the mouse moves again
-	        var tmpPath = '';
-	        lastPart = [];
-	        
-	        for (var offset = 2; offset < buffer.length; offset += 2) 
-	        {
-	            pt = getAveragePoint(offset);
-	            tmpPath += ' L' + pt.x + ' ' + pt.y;
-	            lastPart.push(pt);
-	        }
 
-	        // Set the complete current path coordinates
-	        path.setAttribute('d', strPath + tmpPath);
+			if (perfectFreehandMode)
+			{
+				var tmpPoints = [];
+
+				for (var i = 0; i < drawPoints.length; i++)
+				{
+					tmpPoints.push([drawPoints[i].x, drawPoints[i].y]);
+				}
+
+				lastPart = [];
+				
+				for (var offset = 2; offset < buffer.length; offset += 2) 
+				{
+					pt = getAveragePoint(offset);
+					tmpPoints.push([pt.x, pt.y]);
+					lastPart.push(pt);
+				}
+
+				path.setAttribute('d', PerfectFreehand.getSvgPathFromStroke(tmpPoints, perfectFreehandOptions));
+			}
+			else
+			{
+				// Get the smoothed part of the path that will not change
+				strPath += ' L' + pt.x + ' ' + pt.y;
+				// Get the last part of the path (close to the current mouse position)
+				// This part will change if the mouse moves again
+				var tmpPath = '';
+				lastPart = [];
+				
+				for (var offset = 2; offset < buffer.length; offset += 2) 
+				{
+					pt = getAveragePoint(offset);
+					tmpPath += ' L' + pt.x + ' ' + pt.y;
+					lastPart.push(pt);
+				}
+
+				// Set the complete current path coordinates
+				path.setAttribute('d', strPath + tmpPath);
+			}
 	    }
 	};
 };

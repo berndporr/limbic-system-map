@@ -1,27 +1,48 @@
 /**
- * Copyright (c) 2006-2020, JGraph Ltd
- * Copyright (c) 2006-2020, draw.io AG
+ * Copyright (c) 2006-2024, JGraph Holdings Ltd
+ * Copyright (c) 2006-2024, draw.io AG
  */
 
 //Add a closure to hide the class private variables without changing the code a lot
 (function ()
 {
 
-var _token = null;
+// Access tokens per client, the personal OneDrive and the Microsoft 365
+// client must not share a token
+var _tokens = new WeakMap();
+var _pickerToken = null;
+let _editorUi = null;
+let _filePickedCallback = null;
+let _pickerPort = null;
+let _pickerWindow = null;
+let _pickerMessageListener = null;
+let _pickerCloseTimer = null;
 
-window.OneDriveClient = function(editorUi, isExtAuth, inlinePicker, noLogout)
+function getAccessToken(client)
 {
+	var token = _tokens.get(client);
+
+	return (token != null) ? token : null;
+};
+
+function setAccessToken(client, token)
+{
+	_tokens.set(client, token);
+};
+
+window.OneDriveClient = function(editorUi, isExtAuth, inlinePicker, noLogout, sharepointMode)
+{
+	this.sharepointMode = sharepointMode === true;
+	_editorUi = editorUi;
+
 	if (isExtAuth == null && window.urlParams != null && window.urlParams['extAuth'] == '1')
 	{
 		isExtAuth = true;
 	}
 	
-	if (inlinePicker == null && 
-		((window.urlParams != null && window.urlParams['inlinePicker'] == '1') ||
-		mxClient.IS_ANDROID || mxClient.IS_IOS //Mobile devices doesn't work with OneDrive picker, so, use the inline picker
-		))
+	if (inlinePicker == null) //Use inline picker as default
 	{
-		inlinePicker = true;
+		inlinePicker = window.Editor != null? Editor.oneDriveInlinePicker : true;
 	}
 	
 	if (noLogout == null && window.urlParams != null && window.urlParams['noLogoutOD'] == '1')
@@ -29,7 +50,8 @@ window.OneDriveClient = function(editorUi, isExtAuth, inlinePicker, noLogout)
 		noLogout = true;
 	}
 	
-	DrawioClient.call(this, editorUi, isExtAuth? 'oneDriveExtAuthInfo' : 'oneDriveAuthInfo');
+	DrawioClient.call(this, editorUi, isExtAuth? 'oneDriveExtAuthInfo' : 
+		(this.sharepointMode? 'ms365AuthInfo': 'oneDriveAuthInfo'));
 	
 	this.isExtAuth = isExtAuth;
 	this.inlinePicker = inlinePicker;
@@ -39,6 +61,11 @@ window.OneDriveClient = function(editorUi, isExtAuth, inlinePicker, noLogout)
 	if (authInfo != null)
 	{
 		this.endpointHint = authInfo.endpointHint != null ? authInfo.endpointHint.replace('/Documents', '/_layouts/15/onedrive.aspx') : authInfo.endpointHint;
+	}
+
+	if (this.sharepointMode)
+	{
+		this.redirectUri = window.DRAWIO_SERVER_URL + 'ms365';
 	}
 };
 
@@ -51,7 +78,7 @@ mxUtils.extend(OneDriveClient, DrawioClient);
  * existing thumbnail with the placeholder only once.
  */
 OneDriveClient.prototype.clientId = window.DRAWIO_MSGRAPH_CLIENT_ID || ((window.location.hostname == 'test.draw.io') ?
-	'2e598409-107f-4b59-89ca-d7723c8e00a4' : '45c10911-200f-4e27-a666-9e9fca147395');
+		'95e4b4ed-ed5c-4a05-935b-b411b4562ef2' : '24b129a6-117b-4394-bdc8-3b9955e5cdef');
 
 OneDriveClient.prototype.clientId = window.location.hostname == 'app.diagrams.net' ?
 		'b5ff67d6-3155-4fca-965a-59a3655c4476' : OneDriveClient.prototype.clientId;
@@ -62,18 +89,24 @@ OneDriveClient.prototype.clientId = window.location.hostname == 'viewer.diagrams
  * OAuth 2.0 scopes for installing Drive Apps.
  */
 OneDriveClient.prototype.scopes = 'user.read files.readwrite.all sites.read.all';
+OneDriveClient.prototype.scopesSP = 'https://microsoft.sharepoint.com/AllSites.Write https://microsoft.sharepoint.com/MyFiles.Write';
 
 /**
  * OAuth 2.0 scopes for installing Drive Apps.
  */
-OneDriveClient.prototype.redirectUri = window.location.protocol + '//' + window.location.host + '/microsoft';
-OneDriveClient.prototype.pickerRedirectUri = window.location.protocol + '//' + window.location.host + '/onedrive3.html';
+OneDriveClient.prototype.redirectUri = window.DRAWIO_SERVER_URL + 'microsoft';
+OneDriveClient.prototype.pickerRedirectUri = window.DRAWIO_SERVER_URL + 'onedrive3.html';
 
 /**
  * This is the default endpoint for personal accounts
  */
 OneDriveClient.prototype.defEndpointHint = 'api.onedrive.com'; 
 OneDriveClient.prototype.endpointHint = OneDriveClient.prototype.defEndpointHint;
+
+/**
+ * Value for the root folder.
+ */
+OneDriveClient.prototype.rootId = {id: 'root', name: 'root', parentReference: {driveId: 'me'}};
 
 /**
  * Executes the first step for connecting to Google Drive.
@@ -85,11 +118,20 @@ OneDriveClient.prototype.extension = '.drawio';
  */
 OneDriveClient.prototype.baseUrl = 'https://graph.microsoft.com/v1.0';
 
+OneDriveClient.prototype.authUrl = 'https://login.microsoftonline.com/' + (window.DRAWIO_MSGRAPH_TENANT_ID || 'common');
+
+OneDriveClient.prototype.PICKER_SDK_VERSION = "8.0";
+OneDriveClient.prototype.FILE_EXTENSIONS = [".drawio", ".xml", ".svg", ".png", ".pdf", ".vsdx"];
+OneDriveClient.prototype.sharepointMode = false;
+
 /**
  * Empty function used when no callback is needed
  */
 OneDriveClient.prototype.emptyFn = function(){};
 
+/**
+ * Authorizes the client, gets the userId and calls <open>.
+ */
 OneDriveClient.prototype.invalidFilenameRegExs = [
 	/[~"#%\*:<>\?\/\\{\|}]/,
 	/^\.lock$/i,
@@ -128,7 +170,7 @@ OneDriveClient.prototype.get = function(url, onload, onerror)
 	
 	req.setRequestHeaders = mxUtils.bind(this, function(request, params)
 	{
-		request.setRequestHeader('Authorization', 'Bearer ' + _token);
+		request.setRequestHeader('Authorization', 'Bearer ' + getAccessToken(this));
 	});
 	
 	req.send(onload, onerror);
@@ -164,7 +206,7 @@ OneDriveClient.prototype.updateUser = function(success, error, failOnAuth)
 					this.authenticate(mxUtils.bind(this, function()
 					{
 						this.updateUser(success, error, true);
-					}), error);
+					}), error, null, this.sharepointMode);
 				}
 				else
 				{
@@ -173,9 +215,16 @@ OneDriveClient.prototype.updateUser = function(success, error, failOnAuth)
 			}
 			else
 			{
-				var data = JSON.parse(req.getText());
-				this.setUser(new DrawioUser(data.id, null, data.displayName));
-				success();
+				try
+				{
+					var data = JSON.parse(req.getText());
+					this.setUser(new DrawioUser(data.id, data.mail, data.displayName));
+					success();
+				}
+				catch (e)
+				{
+					error(e);
+				}
 			}
 		}
 	}), mxUtils.bind(this, function(err)
@@ -189,6 +238,9 @@ OneDriveClient.prototype.updateUser = function(success, error, failOnAuth)
 	}));
 };
 
+/**
+ * Authorizes the client, gets the userId and calls <open>.
+ */
 OneDriveClient.prototype.resetTokenRefresh = function(expires_in)
 {
 	if (this.tokenRefreshThread != null)
@@ -205,20 +257,20 @@ OneDriveClient.prototype.resetTokenRefresh = function(expires_in)
 		this.tokenRefreshThread = window.setTimeout(mxUtils.bind(this, function()
 		{
 			//Get a new fresh accessToken
-			this.authenticate(this.emptyFn, this.emptyFn, true);
+			this.authenticate(this.emptyFn, this.emptyFn, true, this.sharepointMode);
 		}), expires_in * 900);
 	}
 };
 
-
 /**
  * Authorizes the client, gets the userId and calls <open>.
  */
-OneDriveClient.prototype.authenticate = function(success, error, failOnAuth)
+OneDriveClient.prototype.authenticate = function(success, error, failOnAuth, isSP, forceUserUpdate)
 {
 	if (this.isExtAuth)
 	{
-		window.parent.oneDriveAuth(mxUtils.bind(this, function(newAuthInfo)
+		var oneDriveAuth = window.oneDriveAuth? window.oneDriveAuth : window.parent.oneDriveAuth;
+		oneDriveAuth(mxUtils.bind(this, function(newAuthInfo)
 		{
 			this.updateAuthInfo(newAuthInfo, true, this.endpointHint == null, success, error);
 		}), error, window.urlParams != null && urlParams['odAuthCancellable'] == '1');
@@ -231,23 +283,34 @@ OneDriveClient.prototype.authenticate = function(success, error, failOnAuth)
 	{
 		if (req.getStatus() >= 200 && req.getStatus() <= 299)
 		{
-			this.authenticateStep2(req.getText(), success, error, failOnAuth);
+			this.authenticateStep2(req.getText(), success, error, failOnAuth, isSP, forceUserUpdate);
 		}
 		else if (error != null)
 		{
-			error(req);
+			error({message: mxResources.get('error') + ' ' + req.getStatus()});
 		}
 	}), error);
 };
 
-OneDriveClient.prototype.updateAuthInfo = function(newAuthInfo, remember, forceUserUpdate, success, error)
+/**
+ * Authorizes the client, gets the userId and calls <open>.
+ */
+OneDriveClient.prototype.updateAuthInfo = function(newAuthInfo, remember, forceUserUpdate, success, error, isSP)
 {
 	if (forceUserUpdate)
 	{
 		this.setUser(null);
 	}
 	
-	_token = newAuthInfo.access_token;
+	if (isSP)
+	{
+		_pickerToken = newAuthInfo.access_token;
+	}
+	else
+	{
+		setAccessToken(this, newAuthInfo.access_token);
+	}
+
 	delete newAuthInfo.access_token; //Don't store access token
 	newAuthInfo.expiresOn = Date.now() + newAuthInfo.expires_in * 1000;
 	this.tokenExpiresOn = newAuthInfo.expiresOn;
@@ -270,7 +333,10 @@ OneDriveClient.prototype.updateAuthInfo = function(newAuthInfo, remember, forceU
 	}
 };
 
-OneDriveClient.prototype.authenticateStep2 = function(state, success, error, failOnAuth)
+/**
+ * Authorizes the client, gets the userId and calls <open>.
+ */
+OneDriveClient.prototype.authenticateStep2 = function(state, success, error, failOnAuth, isSP, forceUserUpdate)
 {
 	if (window.onOneDriveCallback == null)
 	{
@@ -283,21 +349,41 @@ OneDriveClient.prototype.authenticateStep2 = function(state, success, error, fai
 			
 			if (authInfo != null)
 			{
-				var req = new mxXmlRequest(this.redirectUri + '?state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname + '&token=' + state), null, 'GET'); //To identify which app/domain is used
+				var req = new mxXmlRequest(this.redirectUri + '?state=' + encodeURIComponent('cId=' + this.clientId +
+					'&domain=' + window.location.host + '&token=' + state + this.getRedirectPathState()) +
+					'&scopes=' + encodeURIComponent(isSP? this.scopesSP : this.scopes), null, 'GET'); // To identify which app/domain is used
 				
 				req.send(mxUtils.bind(this, function(req)
 				{
 					if (req.getStatus() >= 200 && req.getStatus() <= 299)
 					{
-						this.updateAuthInfo(JSON.parse(req.getText()), authInfo.remember, false, success, error);
+						try
+						{
+							this.updateAuthInfo(JSON.parse(req.getText()), authInfo.remember, forceUserUpdate, mxUtils.bind(this, function()
+							{
+								if (isSP)
+								{
+									this.authenticate(success, error, failOnAuth, false);
+								}
+								else
+								{
+									success();
+								}
+							}), error, isSP);
+						}
+						catch (e)
+						{
+							error({message: mxResources.get('authFailed'), retry: auth});
+						}
 					}
 					else 
 					{
 						this.clearPersistentToken();
 						this.setUser(null);
-						_token = null;
+						setAccessToken(this, null);
 
-						if (req.getStatus() == 401 && !failOnAuth) // (Unauthorized) [e.g, invalid refresh token]
+ 						// (Unauthorized) [e.g, invalid refresh token] or bad request
+						if ((req.getStatus() == 401 || req.getStatus() == 400) && !failOnAuth)
 						{
 							auth();
 						}
@@ -312,11 +398,11 @@ OneDriveClient.prototype.authenticateStep2 = function(state, success, error, fai
 			{
 				this.ui.showAuthDialog(this, true, mxUtils.bind(this, function(remember, authSuccess)
 				{
-					var url = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize' +
-						'?client_id=' + this.clientId + '&response_type=code' +
+					var url = this.authUrl + '/oauth2/v2.0/authorize' +
+						'?client_id=' + this.clientId + '&response_type=code&prompt=select_account' +
 						'&redirect_uri=' + encodeURIComponent(this.redirectUri) +
-						'&scope=' + encodeURIComponent(this.scopes + (remember? ' offline_access' : '')) +
-						'&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname + '&token=' + state); //To identify which app/domain is used
+						'&scope=' + encodeURIComponent((isSP? this.scopesSP : this.scopes) + (remember? ' offline_access' : '')) +
+						'&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.host + '&token=' + state + this.getRedirectPathState()); //To identify which app/domain is used
 	
 					var width = 525,
 						height = 525,
@@ -357,7 +443,17 @@ OneDriveClient.prototype.authenticateStep2 = function(state, success, error, fai
 											authSuccess();
 										}
 										
-										this.updateAuthInfo(authInfo, remember, true, success, error);
+										this.updateAuthInfo(authInfo, remember, !isSP, mxUtils.bind(this, function()
+										{
+											if (isSP)
+											{
+												this.authenticate(success, error, failOnAuth, false, true);
+											}
+											else
+											{
+												success();
+											}
+										}), error, isSP);
 									}
 								}
 								catch (e)
@@ -400,7 +496,9 @@ OneDriveClient.prototype.authenticateStep2 = function(state, success, error, fai
 	}
 };
 
-
+/**
+ * Authorizes the client, gets the userId and calls <open>.
+ */
 OneDriveClient.prototype.getAccountTypeAndEndpoint = function(success, error)
 {
 	this.get(this.baseUrl + '/me/drive/root', mxUtils.bind(this, function(req)
@@ -479,7 +577,7 @@ OneDriveClient.prototype.executeRequest = function(url, success, error)
 					this.authenticate(function()
 					{
 						doExecute(true);
-					}, error, failOnAuth);
+					}, error, failOnAuth, this.sharepointMode);
 				}
 				else
 				{
@@ -497,12 +595,12 @@ OneDriveClient.prototype.executeRequest = function(url, success, error)
 		}));
 	});
 	
-	if (_token == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
+	if (getAccessToken(this) == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
 	{
 		this.authenticate(function()
 		{
 			doExecute(true);
-		}, error);
+		}, error, null, this.sharepointMode);
 	}
 	else
 	{
@@ -513,11 +611,11 @@ OneDriveClient.prototype.executeRequest = function(url, success, error)
 /**
  * Checks if the client is authorized and calls the next step.
  */
-OneDriveClient.prototype.checkToken = function(fn)
+OneDriveClient.prototype.checkToken = function(fn, error)
 {
-	if (_token == null || this.tokenRefreshThread == null || this.tokenExpiresOn - Date.now() < 60000)
+	if (getAccessToken(this) == null || this.tokenRefreshThread == null || this.tokenExpiresOn - Date.now() < 60000)
 	{
-		this.authenticate(fn, this.emptyFn);
+		this.authenticate(fn, (error != null) ? error : this.emptyFn, null, this.sharepointMode);
 	}
 	else
 	{
@@ -525,6 +623,9 @@ OneDriveClient.prototype.checkToken = function(fn)
 	}
 };
 
+/**
+ * Authorizes the client, gets the userId and calls <open>.
+ */
 OneDriveClient.prototype.getItemRef = function(id)
 {
 	var idParts = id.split('/');
@@ -539,6 +640,9 @@ OneDriveClient.prototype.getItemRef = function(id)
 	}
 };
 
+/**
+ * Authorizes the client, gets the userId and calls <open>.
+ */
 OneDriveClient.prototype.getItemURL = function(id, relative)
 {
 	var idParts = id.split('/');
@@ -579,7 +683,9 @@ OneDriveClient.prototype.removeExtraHtmlContent = function(data)
 };
 
 /**
- * Checks if the client is authorized and calls the next step.
+ * Loads the file with the given ID and passes a OneDriveFile, a
+ * OneDriveLibrary if asLibrary is true, or a LocalFile for imports to
+ * success.
  */
 OneDriveClient.prototype.getFile = function(id, success, error, denyConvert, asLibrary)
 {
@@ -594,7 +700,7 @@ OneDriveClient.prototype.getFile = function(id, success, error, denyConvert, asL
 			
 			// Handles .vsdx, Gliffy and PNG+XML files by creating a temporary file
 			if (/\.v(dx|sdx?)$/i.test(meta.name) || /\.gliffy$/i.test(meta.name) ||
-				/\.pdf$/i.test(meta.name) || (!this.ui.useCanvasForExport && binary))
+				/\.pdf$/i.test(meta.name) || (!Editor.useCanvasForExport && binary))
 			{
 				var mimeType = (meta.file != null) ? meta.file.mimeType : null;
 				this.ui.convertFile(meta['@microsoft.graph.downloadUrl'], meta.name, mimeType,
@@ -647,23 +753,13 @@ OneDriveClient.prototype.getFile = function(id, success, error, denyConvert, asL
 								data = (window.atob && !mxClient.IS_SF) ? atob(temp) : Base64.decode(temp);
 							}
 							
-							if (Graph.fileSupport && new XMLHttpRequest().upload && this.ui.isRemoteFileFormat(data, meta['@microsoft.graph.downloadUrl']))
+							if (Graph.fileSupport && this.ui.isGliffyData(data, meta['@microsoft.graph.downloadUrl']))
 							{
-								this.ui.parseFile(new Blob([data], {type: 'application/octet-stream'}), mxUtils.bind(this, function(xhr)
+								this.ui.importGliffy(data, mxUtils.bind(this, function(xml)
 								{
 									try
 									{
-										if (xhr.readyState == 4)
-										{
-											if (xhr.status >= 200 && xhr.status <= 299)
-											{
-												success(new LocalFile(this.ui, xhr.responseText, meta.name + this.extension, true));
-											}
-											else if (error != null)
-											{
-												error({message: mxResources.get('errorLoadingFile')});
-											}
-										}
+										success(new LocalFile(this.ui, xml, meta.name + this.extension, true));
 									}
 									catch (e)
 									{
@@ -676,6 +772,12 @@ OneDriveClient.prototype.getFile = function(id, success, error, denyConvert, asL
 											throw e;
 										}
 									}
+								}), mxUtils.bind(this, function(err)
+								{
+									if (error != null)
+									{
+										error({message: mxResources.get('errorLoadingFile')});
+									}
 								}), meta.name);
 							}
 							else
@@ -686,11 +788,11 @@ OneDriveClient.prototype.getFile = function(id, success, error, denyConvert, asL
 								}
 								else if (asLibrary)
 								{
-									success(new OneDriveLibrary(this.ui, data, meta));
+									success(new OneDriveLibrary(this.ui, data, meta, this.sharepointMode));
 								}
 								else
 								{
-									success(new OneDriveFile(this.ui, data, meta));
+									success(new OneDriveFile(this.ui, data, meta, this.sharepointMode));
 								}
 							}
 				    	}
@@ -715,22 +817,42 @@ OneDriveClient.prototype.getFile = function(id, success, error, denyConvert, asL
 			    		error(this.parseRequestText(req));
 			    	}
 				}), binary || (meta.file != null && meta.file.mimeType != null &&
-					(meta.file.mimeType.substring(0, 6) == 'image/' ||
+					((meta.file.mimeType.substring(0, 6) == 'image/' &&
+					meta.file.mimeType.substring(0, 9) != 'image/svg') ||
 					meta.file.mimeType == 'application/pdf')));
 			}
 		}
 		else
 		{
-			error(this.parseRequestText(req));
+			if (this.isExtAuth)
+			{
+				error({message: mxResources.get('fileNotFoundOrDenied'),
+						ownerEmail: window.urlParams != null? urlParams['ownerEml'] : null});
+			}
+			else
+			{
+				error(this.parseRequestText(req));				
+			}
 		}
-	}), error);
+	}), function(err)
+	{
+		if (error != null)
+		{
+			// Replaces ObjectHandle is Invalid error message
+			if (err != null && err.error != null &&
+				err.error.message === 'ObjectHandle is Invalid')
+			{
+				err.error.message = mxResources.get('fileNotFoundOrDenied');
+			}
+			
+			error(err);
+		}
+	});
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Renames the given file to the given filename. Shows an error if a file
+ * with that name exists in the same folder.
  */
 OneDriveClient.prototype.renameFile = function(file, filename, success, error)
 {
@@ -759,10 +881,8 @@ OneDriveClient.prototype.renameFile = function(file, filename, success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Moves the file with the given ID to the folder with the given ID, which
+ * must be on the same drive.
  */
 OneDriveClient.prototype.moveFile = function(id, folderId, success, error)
 {
@@ -772,7 +892,7 @@ OneDriveClient.prototype.moveFile = function(id, folderId, success, error)
 	
 	if (folderInfo.driveId != fileInfo.driveId)
 	{
-		error({message: mxResources.get('cannotMoveOneDrive', null, 'Moving a file between accounts is not supported yet.')});
+		error({message: mxResources.get('cannotMoveOneDrive')});
 	}
 	else 
 	{
@@ -781,10 +901,8 @@ OneDriveClient.prototype.moveFile = function(id, folderId, success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Inserts a new library with the given filename and data into the folder
+ * with the given ID.
  */
 OneDriveClient.prototype.insertLibrary = function(filename, data, success, error, folderId)
 {
@@ -792,10 +910,10 @@ OneDriveClient.prototype.insertLibrary = function(filename, data, success, error
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Creates a new file with the given filename and data in the folder with
+ * the given ID, or the root folder, and passes a OneDriveFile, or a
+ * OneDriveLibrary if asLibrary is true, to success. Asks the user before
+ * replacing an existing file.
  */
 OneDriveClient.prototype.insertFile = function(filename, data, success, error, asLibrary, folderId)
 {
@@ -823,11 +941,11 @@ OneDriveClient.prototype.insertFile = function(filename, data, success, error, a
 			{
 				if (asLibrary)
 				{
-					success(new OneDriveLibrary(this.ui, data, meta));
+					success(new OneDriveLibrary(this.ui, data, meta, this.sharepointMode));
 				}
 				else
 				{
-					success(new OneDriveFile(this.ui, data, meta));
+					success(new OneDriveFile(this.ui, data, meta, this.sharepointMode));
 				}
 			});
 
@@ -855,10 +973,10 @@ OneDriveClient.prototype.insertFile = function(filename, data, success, error, a
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Passes true to fn if no file with the given filename exists in the folder
+ * with the given ID, or the root folder. For existing files, the user is
+ * asked to replace the file if askReplace is true, otherwise an error is
+ * shown and false is passed to fn.
  */
 OneDriveClient.prototype.checkExists = function(parentId, filename, askReplace, fn)
 {
@@ -906,10 +1024,9 @@ OneDriveClient.prototype.checkExists = function(parentId, filename, askReplace, 
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Uploads the data of the given file, as PNG for .png files, and passes the
+ * new metadata and the saved data to success. The optional etag is used to
+ * detect conflicts.
  */
 OneDriveClient.prototype.saveFile = function(file, success, error, etag)
 {
@@ -937,7 +1054,7 @@ OneDriveClient.prototype.saveFile = function(file, success, error, etag)
 			}
 		});
 		
-		if (this.ui.useCanvasForExport && /(\.png)$/i.test(file.meta.name))
+		if (Editor.useCanvasForExport && /(\.png)$/i.test(file.meta.name))
 		{
 			var p = this.ui.getPngFileProperties(this.ui.fileNode);
 			
@@ -949,7 +1066,10 @@ OneDriveClient.prototype.saveFile = function(file, success, error, etag)
 		}
 		else
 		{
-			fn(savedData);
+			// The realtime key is only written to the stored file,
+			// savedData is what the document holds
+			fn((typeof file.addRealtimeKey === 'function') ?
+				file.addRealtimeKey(savedData) : savedData);
 		}
 	}
 	catch (e)
@@ -966,7 +1086,9 @@ OneDriveClient.prototype.writeLargeFile = function(url, data, success, error, et
 		
 		if (data != null)
 		{
-			var uploadPart = mxUtils.bind(this, function(uploadUrl, index, retryCount)
+			var dataByteLength = (new TextEncoder().encode(data)).length;
+
+			var uploadPart = mxUtils.bind(this, function(uploadUrl, index, byteIndex, retryCount)
 			{
 				try
 				{
@@ -981,12 +1103,13 @@ OneDriveClient.prototype.writeLargeFile = function(url, data, success, error, et
 					}), this.ui.timeout);
 	
 					var part = data.substr(index, chunkSize);
+					var partByteLength = (new TextEncoder().encode(part)).length;
 					var req = new mxXmlRequest(uploadUrl, part, 'PUT');
-						
+
 					req.setRequestHeaders = mxUtils.bind(this, function(request, params)
 					{
-						request.setRequestHeader('Content-Length', part.length);
-						request.setRequestHeader('Content-Range', 'bytes ' + index + '-' + (index + part.length - 1) + '/' + data.length);
+						request.setRequestHeader('Content-Range', 'bytes ' + byteIndex + '-' + 
+							(byteIndex + partByteLength - 1) + '/' + dataByteLength);
 					});
 
 					req.send(mxUtils.bind(this, function(req)
@@ -1006,13 +1129,13 @@ OneDriveClient.prototype.writeLargeFile = function(url, data, success, error, et
 								}
 								else
 								{
-									uploadPart(uploadUrl, nextByte, retryCount);
+									uploadPart(uploadUrl, nextByte, byteIndex + partByteLength, retryCount);
 								}
 							}
 							else if (status >= 500 && status <= 599 && retryCount < 2) //Retry on server errors
 							{
 								retryCount++;
-								uploadPart(uploadUrl, index, retryCount);
+								uploadPart(uploadUrl, index, byteIndex, retryCount);
 							}
 							else
 							{
@@ -1035,89 +1158,11 @@ OneDriveClient.prototype.writeLargeFile = function(url, data, success, error, et
 				}
 			});
 			
-			var doExecute = mxUtils.bind(this, function(failOnAuth)
+			this.executeWriteRequest(url + '/createUploadSession', '{}', 'POST', 'application/json', function(req)
 			{
-				try
-				{
-					var acceptResponse = true;
-					var timeoutThread = null;
-					
-					try
-					{
-						timeoutThread = window.setTimeout(mxUtils.bind(this, function()
-						{
-							acceptResponse = false;
-							error({code: App.ERROR_TIMEOUT});
-						}), this.ui.timeout);
-					}
-					catch (e)
-					{
-						// Ignore window closed
-					}
-					
-					var req = new mxXmlRequest(url + '/createUploadSession', '{}', 'POST');
-					
-					req.setRequestHeaders = mxUtils.bind(this, function(request, params)
-					{
-						request.setRequestHeader('Content-Type', 'application/json');
-						request.setRequestHeader('Authorization', 'Bearer ' + _token);
-						
-						if (etag != null)
-						{
-							request.setRequestHeader('If-Match', etag);
-						}
-					});
-					
-					req.send(mxUtils.bind(this, function(req)
-					{
-				    	window.clearTimeout(timeoutThread);
-				    	
-				    	if (acceptResponse)
-				    	{
-					    	if (req.getStatus() >= 200 && req.getStatus() <= 299)
-							{
-								var resp = JSON.parse(req.getText());
-					    		uploadPart(resp.uploadUrl, 0);
-							}
-							else if (!failOnAuth && req.getStatus() === 401)
-							{
-								this.authenticate(function()
-								{
-									doExecute(true);
-								}, error, failOnAuth);
-							}
-							else
-							{
-								error(this.parseRequestText(req), req);
-							}
-				    	}
-					}), mxUtils.bind(this, function(req)
-					{
-				    	window.clearTimeout(timeoutThread);
-				    	
-				    	if (acceptResponse)
-				    	{
-							error(this.parseRequestText(req));
-				    	}
-					}));
-				}
-				catch (e)
-				{
-					error(e);
-				}
-			});
-			
-			if (_token == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
-			{
-				this.authenticate(function()
-				{
-					doExecute(true);
-				}, error);
-			}
-			else
-			{
-				doExecute(false);
-			}
+				var resp = JSON.parse(req.getText());
+				uploadPart(resp.uploadUrl, 0, 0);
+			}, error, etag);
 		}
 		else
 		{
@@ -1131,12 +1176,28 @@ OneDriveClient.prototype.writeLargeFile = function(url, data, success, error, et
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Sends the given data to the given URL with the given method and content
+ * type and passes the parsed response to success. Loads the current user if
+ * it is unknown.
  */
 OneDriveClient.prototype.writeFile = function(url, data, method, contentType, success, error, etag)
+{
+	this.executeWriteRequest(url, data, method, contentType, mxUtils.bind(this, function(req)
+	{
+		if (this.user == null)
+		{
+			this.updateUser(this.emptyFn, this.emptyFn, true);
+		}
+		
+		success(JSON.parse(req.getText()));
+	}), error, etag);
+};
+
+/**
+ * Sends a write request with the given method and content type and calls
+ * success with the request if the response status is 2xx.
+ */
+OneDriveClient.prototype.executeWriteRequest = function(url, data, method, contentType, success, error, etag)
 {
 	try
 	{
@@ -1172,7 +1233,7 @@ OneDriveClient.prototype.writeFile = function(url, data, method, contentType, su
 						//TODO This header is needed for moving a file between two different drives. 
 						//		Note: the response is empty when this header is used, also the server may take some time to really execute the request (i.e. async) 
 						//request.setRequestHeader('Prefer', 'respond-async');
-						request.setRequestHeader('Authorization', 'Bearer ' + _token);
+						request.setRequestHeader('Authorization', 'Bearer ' + getAccessToken(this));
 						
 						if (etag != null)
 						{
@@ -1188,19 +1249,14 @@ OneDriveClient.prototype.writeFile = function(url, data, method, contentType, su
 				    	{
 					    	if (req.getStatus() >= 200 && req.getStatus() <= 299)
 							{
-					    		if (this.user == null)
-								{
-									this.updateUser(this.emptyFn, this.emptyFn, true);
-								}
-					    		
-								success(JSON.parse(req.getText()));
+								success(req);
 							}
 							else if (!failOnAuth && req.getStatus() === 401)
 							{
 								this.authenticate(function()
 								{
 									doExecute(true);
-								}, error, failOnAuth);
+								}, error, failOnAuth, this.sharepointMode);
 							}
 							else
 							{
@@ -1223,12 +1279,12 @@ OneDriveClient.prototype.writeFile = function(url, data, method, contentType, su
 				}
 			});
 			
-			if (_token == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
+			if (getAccessToken(this) == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
 			{
 				this.authenticate(function()
 				{
 					doExecute(true);
-				}, error);
+				}, error, null, this.sharepointMode);
 			}
 			else
 			{
@@ -1256,6 +1312,13 @@ OneDriveClient.prototype.parseRequestText = function(req)
 	try
 	{
 		result = JSON.parse(req.getText());
+		result.status = req.getStatus();
+		
+		if (result.error)
+		{
+			result.error.status = result.status;
+			result.error.code = result.status;
+		}
 	}
 	catch (e)
 	{
@@ -1277,14 +1340,15 @@ OneDriveClient.prototype.pickLibrary = function(fn)
 	});
 };
 
-OneDriveClient.prototype.createInlinePicker = function(fn, foldersOnly)
+/**
+ * Checks if the client is authorized and calls the next step.
+ */
+OneDriveClient.prototype.createInlinePicker = function(fn, foldersOnly, acceptAllFiles)
 {
 	return mxUtils.bind(this, function()
 	{
 		var odPicker = null;
 		var div = document.createElement('div');
-		div.style.width = '550px';
-		div.style.height = '435px';
 		div.style.position = 'relative';
 		
 		var dlg = new CustomDialog(this.ui, div, mxUtils.bind(this, function()
@@ -1295,26 +1359,53 @@ OneDriveClient.prototype.createInlinePicker = function(fn, foldersOnly)
 			{
 				if (foldersOnly && typeof item.folder == 'object')
 				{
-					fn({
-						value: [item]
-					});
-					return;
+					fn({value: [item]});
 				}
-				else if (!item.folder)
+				else if (!item.folder && this.ui.spinner.spin(document.body, mxResources.get('loading')))
 				{
-					fn(OneDriveFile.prototype.getIdOf(item));
-					return;
+					var id = OneDriveFile.prototype.getIdOf(item);
+
+					this.executeRequest(this.getItemURL(id), mxUtils.bind(this, function(req)
+					{
+						this.ui.spinner.stop();
+
+						if (req.getStatus() >= 200 && req.getStatus() <= 299)
+						{
+							var meta = JSON.parse(req.getText());
+							fn(id, {value: [meta]});
+						}
+						else
+						{
+							this.ui.handleError({code: req.getStatus()});
+						}
+					}), mxUtils.bind(this, function(req)
+					{
+						this.ui.spinner.stop();
+						this.ui.handleError(req);
+					}));
 				}
+
+				return;
 			}
 			
-			return mxResources.get('invalidSel', null, 'Invalid selection');
-		}), null, mxResources.get(foldersOnly? 'save' :'open'), null, null, null, null, true);
+			return mxResources.get('invalidSel');
+		}), null, mxResources.get(foldersOnly? 'select' :'open'), null, null, null, null, true);
 		
-		this.ui.showDialog(dlg.container, 550, 485, true, true);
+		this.ui.showDialog(dlg.container, 550, 500, true, true);
+		//Set width/height of the picker container
+		div.style.width = (parseInt(dlg.container.parentNode.style.width) - 60) + 'px';
+
+		// Fills the dialog above the pinned buttons (measured while the picker
+		// is empty), as a fixed offset from the dialog height no longer matches
+		// the dialog layout and clipped the bottom border of the preview
+		var wnd = dlg.container.parentNode;
+		var wndStyle = window.getComputedStyle(wnd);
+		div.style.height = Math.max(0, wnd.clientHeight - parseFloat(wndStyle.paddingTop) -
+			parseFloat(wndStyle.paddingBottom) - dlg.container.offsetHeight) + 'px';
 		
-		odPicker = new mxODPicker(div, null, mxUtils.bind(this, function(url, success, error)
+		odPicker = new mxODPicker(div, null, mxUtils.bind(this, function(url, success, error, isAbsUrl)
 		{
-			this.executeRequest(this.baseUrl + url, function(req)
+			this.executeRequest(isAbsUrl? url : this.baseUrl + url, function(req)
 			{
 				success(JSON.parse(req.getText()));
 			}, error);
@@ -1340,14 +1431,304 @@ OneDriveClient.prototype.createInlinePicker = function(fn, foldersOnly)
 		mxUtils.bind(this, function(err)
 		{
 			this.ui.showError(mxResources.get('error'), err);
-		}), foldersOnly); 
+		}), foldersOnly, null, null, null, null, acceptAllFiles); 
 	});
+};
+
+const cleanupPickerResources = function () {
+	if (_pickerCloseTimer != null) {
+		clearInterval(_pickerCloseTimer);
+		_pickerCloseTimer = null;
+	}
+
+	if (_pickerMessageListener != null) {
+		try { window.removeEventListener('message', _pickerMessageListener); } catch (e) { /* ignore */ }
+		_pickerMessageListener = null;
+	}
+
+	if (_pickerPort != null) {
+		try { _pickerPort.close && _pickerPort.close(); } catch (e) { /* ignore */ }
+		_pickerPort = null;
+	}
+
+	if (_pickerWindow != null) {
+		try { if (!_pickerWindow.closed) { _pickerWindow.close(); } } catch (e) { /* ignore */ }
+	}
+
+	_pickerWindow = null;
+};
+
+const closePickerDialog = function () {
+	cleanupPickerResources();
+};
+
+const extractDriveId = function (itemObj, parent) {
+	return ((itemObj.parentReference != null && itemObj.parentReference.driveId != null) ? itemObj.parentReference.driveId + '/' : '') +
+	((parent != null) ? itemObj.parentReference.id : (itemObj.id + (itemObj.folder && itemObj.folder.isRoot ? '/root' : '')));
+};
+
+const generateUuid = () =>
+	'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+		const r = Math.random() * 16 | 0;
+		const v = c === 'x' ? r : (r & 0x3 | 0x8);
+		return v.toString(16);
+});
+OneDriveClient.prototype.createPickerConfig = function (mode, webUrl) {
+	return {
+		sdk: this.PICKER_SDK_VERSION,
+		entry: {
+			sharePoint: {
+				byPath: {
+					web: webUrl
+				}
+			}
+		},
+		authentication: {},
+		messaging: {
+			origin: location.origin,
+			channelId: generateUuid()
+		},
+		typesAndSources: {
+			mode,
+			...(mode === "files" && { filters: this.FILE_EXTENSIONS }),
+			pivots: {
+			oneDrive: true,
+			recent: true,
+			shared: false,
+			sharedLibraries: true,
+			myOrganization: false,
+			site: true
+			}
+		},
+		selection: {
+			mode: "single"
+		},
+		theme: Editor.isDarkMode()? 'dark' : 'default'
+	};
+};
+
+OneDriveClient.prototype.setupPickerMessageListener = function (channelId, messageHandler) {
+	if (_pickerMessageListener != null) {
+		try { window.removeEventListener('message', _pickerMessageListener); } catch (e) { /* ignore */ }
+		_pickerMessageListener = null;
+	}
+
+	const handleMessage = (event) => {
+		if (event.source && event.source === _pickerWindow) {
+			const message = event.data;
+
+			if (message.type === "initialize" && message.channelId === channelId) {
+				_pickerPort = event.ports[0];
+				_pickerPort.addEventListener("message", messageHandler);
+				_pickerPort.start();
+				_pickerPort.postMessage({ type: "activate" });
+			}
+		}
+	};
+
+	_pickerMessageListener = handleMessage;
+	window.addEventListener('message', handleMessage);
+};
+
+const handlePickerCommandMessage = async function (data, onPick) {
+	_pickerPort.postMessage({ type: 'acknowledge', id: data.id });
+
+	const command = data.data;
+
+	try {
+		switch (command.command) {
+		case 'authenticate':
+			const token = _pickerToken;
+
+			if (token) {
+				_pickerPort.postMessage({
+					type: 'result',
+					id: data.id,
+					data: { result: 'token', token }
+				});
+			}
+			else {
+				throw new Error('Could not get auth token for command: ' + JSON.stringify(command));
+			}
+			break;
+
+		case 'close':
+			closePickerDialog();
+			break;
+
+		case 'pick':
+			_pickerPort.postMessage({
+				type: 'result',
+				id: data.id,
+				data: { result: 'success' }
+			});
+
+			closePickerDialog();
+			onPick(command);
+			break;
+
+		default:
+			console.warn('Unsupported command: ' + JSON.stringify(command));
+			_pickerPort.postMessage({
+				type: 'result',
+				id: data.id,
+				data: {
+				result: 'error',
+				error: {
+					code: 'unsupportedCommand',
+					message: command.command
+				},
+				isExpected: true
+				}
+			});
+		}
+	}
+	catch (err) {
+		console.error('Error handling picker command:', err);
+		_pickerPort.postMessage({
+			type: 'result',
+			id: data.id,
+			data: {
+			result: 'error',
+			error: { code: 'commandError', message: err.message },
+			isExpected: true
+			}
+		});
+	}
+};
+
+OneDriveClient.prototype.handleFolderPickerMessage = async function (message) {
+	const { data } = message;
+
+	switch (data.type) {
+	case "notification":
+		break;
+
+	case "command":
+		await handlePickerCommandMessage(data, function (command) {
+			_filePickedCallback({ value: command.items });
+		});
+		break;
+	}
+};
+
+OneDriveClient.prototype.handleFilePickerMessage = async (message) => {
+	const { data } = message;
+
+	switch (data.type) {
+	case "command":
+		await handlePickerCommandMessage(data, function (command) {
+			const selectedFileId = extractDriveId(command.items[0]);
+			_filePickedCallback(selectedFileId);
+		});
+		break;
+	}
+};
+
+OneDriveClient.prototype.pickFile = function (fn, acceptAllFiles) 
+{
+	this.sharepointMode? this.pickFileSP(fn, acceptAllFiles) :
+								this.pickFileOD(fn, acceptAllFiles)
+};
+
+OneDriveClient.prototype.pickFolder = async function (fn, direct) 
+{
+	this.sharepointMode? this.pickFolderSP(fn, direct) :
+								this.pickFolderOD(fn, direct);
+};
+
+OneDriveClient.prototype.pickFileSP = function (fn, acceptAllFiles) {
+	fn = fn ?? mxUtils.bind(this, function (id) {
+		this.ui.loadFile('M' + encodeURIComponent(id));
+	});
+	this.launchPicker(fn, 'files');
+};
+
+OneDriveClient.prototype.pickFolderSP = async function (fn, direct) {
+	this.launchPicker(fn, 'folders');
+};
+
+OneDriveClient.prototype.launchPicker = async function (fn, mode)
+{
+	try
+	{
+		_filePickedCallback = fn;
+		cleanupPickerResources();
+
+		this.executeRequest(this.baseUrl + '/me/drive', mxUtils.bind(this, function(req)
+		{
+			if (req.getStatus() >= 200 && req.getStatus() <= 299)
+			{
+				var info = JSON.parse(req.getText());
+				var baseUrl = info.webUrl;
+
+				if (baseUrl != null)
+				{
+					// Remove the last segment from the baseUrl which is /Documents or similar
+					var lastSlash = baseUrl.lastIndexOf('/');
+					if (lastSlash > 0) {
+						baseUrl = baseUrl.substring(0, lastSlash);
+					}
+				}
+
+				const pickerConfig = this.createPickerConfig(mode, baseUrl);
+				const queryString = new URLSearchParams({
+					filePicker: JSON.stringify(pickerConfig)
+				});
+
+				// Use popup window instead of iframe to avoid SharePoint frame-ancestors CSP restrictions
+				var popupWidth = 1080, popupHeight = 680;
+				var left = (screen.width - popupWidth) / 2;
+				var top = (screen.height - popupHeight) / 2;
+				_pickerWindow = window.open('', 'SharePointPicker',
+					'width=' + popupWidth + ',height=' + popupHeight + ',left=' + left + ',top=' + top +
+					',menubar=no,toolbar=no,location=no,status=no');
+
+				if (_pickerWindow == null)
+				{
+					this.ui.showError(mxResources.get('error'), 'Popup blocked. Please allow popups for this site.');
+					cleanupPickerResources();
+					return;
+				}
+
+				// Load FilePicker via GET in popup — access_token is optional for popups
+				// and avoids SharePoint CSP issues with POSTed token pages.
+				// The picker will request tokens via MessagePort authenticate commands.
+				const url = baseUrl + '/_layouts/15/FilePicker.aspx?' + queryString;
+
+				this.setupPickerMessageListener(pickerConfig.messaging.channelId, mode === 'files' ? this.handleFilePickerMessage : this.handleFolderPickerMessage);
+
+				_pickerWindow.location.href = url;
+
+				// Monitor popup close — if user closes the popup manually, clean up
+				_pickerCloseTimer = setInterval(function()
+				{
+					if (_pickerWindow == null || _pickerWindow.closed)
+					{
+						cleanupPickerResources();
+					}
+				}, 500);
+			}
+			else
+			{
+				this.ui.handleError({code: req.getStatus()});
+			}
+		}), mxUtils.bind(this, function(req)
+		{
+			this.ui.handleError(req);
+		}));
+	}
+	catch (e)
+	{
+		cleanupPickerResources();
+		this.ui.showError(mxResources.get('error'), e && e.message ? e.message : e);
+	}
 };
 
 /**
  * Checks if the client is authorized and calls the next step.
  */
-OneDriveClient.prototype.pickFolder = function(fn, direct)
+OneDriveClient.prototype.pickFolderOD = function(fn, direct)
 {
 	var errorFn = mxUtils.bind(this, function(e)
 	{
@@ -1356,8 +1737,9 @@ OneDriveClient.prototype.pickFolder = function(fn, direct)
 	
 	var odSaveDlg = mxUtils.bind(this, function(direct)
 	{
-		var openSaveDlg = this.inlinePicker? this.createInlinePicker(fn, true) :
-								mxUtils.bind(this, function()
+		var openSaveDlg = this.inlinePicker ?
+			this.createInlinePicker(fn, true) :
+			mxUtils.bind(this, function()
 		{
 			OneDrive.save(
 			{
@@ -1366,21 +1748,15 @@ OneDriveClient.prototype.pickFolder = function(fn, direct)
 				openInNewWindow: true,
 				advanced:
 				{
-					'endpointHint': mxClient.IS_IE11? null : this.endpointHint, //IE11 doen't work with our modified version, so, setting endpointHint disable using our token BUT will force relogin!
+					'endpointHint': this.endpointHint,
 					'redirectUri': this.pickerRedirectUri,
 					'queryParameters': 'select=id,name,parentReference',
-					'accessToken': _token,
+					'accessToken': getAccessToken(this),
 					isConsumerAccount: false
 				},
 				success: mxUtils.bind(this, function(files)
 				{
 					fn(files);
-					
-					//Update the token in case a login with a different user
-					if (mxClient.IS_IE11)
-					{
-						_token = files.accessToken;
-					}
 				}),
 				cancel: mxUtils.bind(this, function()
 				{
@@ -1398,7 +1774,7 @@ OneDriveClient.prototype.pickFolder = function(fn, direct)
 		{
 			this.ui.confirm(mxResources.get('useRootFolder'), mxUtils.bind(this, function()
 			{
-				fn({value: [{id: 'root', name: 'root', parentReference: {driveId: 'me'}}]});
+				fn({value: [this.rootId]});
 				
 			}), openSaveDlg, mxResources.get('yes'), mxResources.get('noPickFolder') + '...', true);
 		}
@@ -1409,11 +1785,12 @@ OneDriveClient.prototype.pickFolder = function(fn, direct)
 		}
 	});
 	
-	if (_token == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
+	if (getAccessToken(this) == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
 	{
 		this.authenticate(mxUtils.bind(this, function()
 		{
-			odSaveDlg(false);
+			// Direct only possible within user event
+			odSaveDlg(this.inlinePicker && direct);
 		}), errorFn);
 	}
 	else
@@ -1425,7 +1802,7 @@ OneDriveClient.prototype.pickFolder = function(fn, direct)
 /**
  * Checks if the client is authorized and calls the next step.
  */
-OneDriveClient.prototype.pickFile = function(fn)
+OneDriveClient.prototype.pickFileOD = function(fn, acceptAllFiles)
 {
 	fn = (fn != null) ? fn : mxUtils.bind(this, function(id)
 	{
@@ -1434,10 +1811,10 @@ OneDriveClient.prototype.pickFile = function(fn)
 	
 	var errorFn = mxUtils.bind(this, function(e)
 	{
-		this.ui.showError(mxResources.get('error'), e && e.message? e.message : e);
+		this.ui.showError(mxResources.get('authFailed'), e && e.message? e.message : e);
 	});
 	
-	var odOpenDlg = this.inlinePicker? this.createInlinePicker(fn) :
+	var odOpenDlg = this.inlinePicker? this.createInlinePicker(fn, null, acceptAllFiles) :
 							mxUtils.bind(this, function()
 	{
 		OneDrive.open(
@@ -1447,22 +1824,16 @@ OneDriveClient.prototype.pickFile = function(fn)
 			multiSelect: false,
 			advanced:
 			{
-				'endpointHint': mxClient.IS_IE11? null : this.endpointHint, //IE11 doen't work with our modified version, so, setting endpointHint disable using our token BUT will force relogin!
+				'endpointHint': this.endpointHint,
 				'redirectUri': this.pickerRedirectUri,
-				'queryParameters': 'select=id,name,parentReference', //We can also get @microsoft.graph.downloadUrl within this request but it will break the normal process
-				'accessToken': _token,
+				'queryParameters': 'select=id,name,parentReference,webUrl', //We can also get @microsoft.graph.downloadUrl within this request but it will break the normal process
+				'accessToken': getAccessToken(this),
 				isConsumerAccount: false
 			},
 			success: mxUtils.bind(this, function(files)
 			{
 				if (files != null && files.value != null && files.value.length > 0)
 				{
-					//Update the token in case a login with a different user
-					if (mxClient.IS_IE11)
-					{
-						_token = files.accessToken;
-					}
-					
 					fn(OneDriveFile.prototype.getIdOf(files.value[0]), files);
 				}
 			}),
@@ -1479,16 +1850,23 @@ OneDriveClient.prototype.pickFile = function(fn)
 		}
 	});
 	
-	if (_token == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
+	if (getAccessToken(this) == null || this.tokenExpiresOn - Date.now() < 60000) //60 sec tolerance window
 	{
 		this.authenticate(mxUtils.bind(this, function()
 		{
-			this.ui.showDialog(new BtnDialog(this.ui, this, mxResources.get('open'), mxUtils.bind(this, function()
+			if (this.inlinePicker)
 			{
-				this.ui.hideDialog();
-				odOpenDlg();							
-			})).container, 300, 140, true, true);
-		}), errorFn);
+				odOpenDlg();
+			}
+			else
+			{
+				this.ui.showDialog(new BtnDialog(this.ui, this, mxResources.get('open'), mxUtils.bind(this, function()
+				{
+					this.ui.hideDialog();
+					odOpenDlg();							
+				})).container, 300, 140, true, true);
+			}
+		}), errorFn)
 	}
 	else
 	{
@@ -1511,12 +1889,17 @@ OneDriveClient.prototype.logout = function()
 		}
 	}
 
-	window.open('https://login.microsoftonline.com/common/oauth2/v2.0/logout', 'logout', 'width=525,height=525,status=no,resizable=yes,toolbar=no,menubar=no,scrollbars=yes');
+	window.open(this.authUrl + '/oauth2/v2.0/logout', 'logout', 'width=525,height=525,status=no,resizable=yes,toolbar=no,menubar=no,scrollbars=yes');
 	//Send to server to clear refresh token cookie
-	this.ui.editor.loadUrl(this.redirectUri + '?doLogout=1&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname));
+	this.ui.editor.loadUrl(this.redirectUri + '?doLogout=1&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.host));
 	this.clearPersistentToken();
 	this.setUser(null);
-	_token = null;
+	setAccessToken(this, null);
+	
+	if (this.sharepointMode)
+	{
+		_pickerToken = null;
+	}
 };
 
 })();

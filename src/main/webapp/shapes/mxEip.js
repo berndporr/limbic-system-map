@@ -1,6 +1,5 @@
 /**
- * $Id: mxEip.js,v 1.0 2014/11/27 06:09:21 mate Exp $
- * Copyright (c) 2006-2015, JGraph Ltd
+ * Copyright (c) 2006-2015, JGraph Holdings Ltd
  */
 
 //**********************************************************************************************************************************************************
@@ -27,9 +26,13 @@ mxShapeEipMessageExpiration.prototype.cst = {
 		SHAPE_MESS_EXP : 'mxgraph.eip.messExp'
 };
 
+mxShapeEipMessageExpiration.prototype.customProperties = [
+	{name: 'handsColor', dispName: 'Hands Color', defVal: '#808080', type: 'color', primary:true}
+];
+
 /**
  * Function: paintVertexShape
- * 
+ *
  * Paints the vertex shape.
  */
 mxShapeEipMessageExpiration.prototype.paintVertexShape = function(c, x, y, w, h)
@@ -43,7 +46,7 @@ mxShapeEipMessageExpiration.prototype.background = function(c, x, y, w, h)
 	c.ellipse(0, 0, w, h);
 	c.stroke();
 	
-	c.setStrokeColor("#808080");
+	c.setStrokeColor(mxUtils.getValue(this.style, 'handsColor', '#808080'));
 	c.begin();
 	c.moveTo(w * 0.5, h * 0.1);
 	c.lineTo(w * 0.5, h * 0.5);
@@ -93,9 +96,13 @@ mxShapeEipReturnAddress.prototype.cst = {
 		SHAPE_RET_ADDR : 'mxgraph.eip.retAddr'
 };
 
+mxShapeEipReturnAddress.prototype.customProperties = [
+	{name: 'stampColor', dispName: 'Stamp Color', defVal: '#EDEDED', type: 'color', primary:true}
+];
+
 /**
 * Function: paintVertexShape
-* 
+*
 * Paints the vertex shape.
 */
 mxShapeEipReturnAddress.prototype.paintVertexShape = function(c, x, y, w, h)
@@ -131,7 +138,7 @@ mxShapeEipReturnAddress.prototype.foreground = function(c, x, y, w, h)
 	c.lineTo(w * 0.8, h * 0.80);
 	c.stroke();
 
-	c.setFillColor("#EDEDED");
+	c.setFillColor(mxUtils.getValue(this.style, 'stampColor', '#EDEDED'));
 	c.rect(w * 0.8, h * 0.1, w * 0.12, h * 0.19);
 	c.fillAndStroke();
 };
@@ -221,9 +228,14 @@ mxShapeEipMessageChannel.prototype.cst = {
 		SHAPE_MESSAGE_CHANNEL : 'mxgraph.eip.messageChannel'
 };
 
+mxShapeEipMessageChannel.prototype.customProperties = [
+	{name: 'channelColor1', dispName: 'Channel Color 1', defVal: '#e6e6e6', type: 'color', primary:true},
+	{name: 'channelColor2', dispName: 'Channel Color 2', defVal: '#808080', type: 'color', primary:true}
+];
+
 /**
 * Function: paintVertexShape
-* 
+*
 * Paints the vertex shape.
 */
 mxShapeEipMessageChannel.prototype.paintVertexShape = function(c, x, y, w, h)
@@ -236,7 +248,7 @@ mxShapeEipMessageChannel.prototype.paintVertexShape = function(c, x, y, w, h)
 
 mxShapeEipMessageChannel.prototype.background = function(c, x, y, w, h)
 {
-	c.setGradient('#e6e6e6', '#808080', 0, 0, w, h, mxConstants.DIRECTION_SOUTH, 1, 1);
+	c.setGradient(mxUtils.getValue(this.style, 'channelColor1', '#e6e6e6'), mxUtils.getValue(this.style, 'channelColor2', '#808080'), 0, 0, w, h, mxConstants.DIRECTION_SOUTH, 1, 1);
 	c.begin();
 	c.moveTo(8, h * 0.5 + 10);
 	c.arcTo(12, 12, 0, 0, 1, 8, h * 0.5 - 10);
@@ -248,7 +260,7 @@ mxShapeEipMessageChannel.prototype.background = function(c, x, y, w, h)
 
 mxShapeEipMessageChannel.prototype.foreground = function(c, x, y, w, h)
 {
-	c.setFillColor('#e6e6e6');
+	c.setFillColor(mxUtils.getValue(this.style, 'channelColor1', '#e6e6e6'));
 	c.begin();
 	c.moveTo(w - 8, h * 0.5 - 10);
 	c.arcTo(12, 12, 0, 0, 1, w - 8, h * 0.5 + 10);
@@ -303,9 +315,15 @@ mxShapeEipDatatypeChannel.prototype.cst = {
 		SHAPE_DATATYPE_CHANNEL : 'mxgraph.eip.dataChannel'
 };
 
+mxShapeEipDatatypeChannel.prototype.customProperties = [
+	{name: 'channelColor1', dispName: 'Channel Color 1', defVal: '#e6e6e6', type: 'color', primary:true},
+	{name: 'channelColor2', dispName: 'Channel Color 2', defVal: '#808080', type: 'color', primary:true},
+	{name: 'markerColor', dispName: 'Marker Color', defVal: '#fffbc0', type: 'color', primary:true}
+];
+
 /**
 * Function: paintVertexShape
-* 
+*
 * Paints the vertex shape.
 */
 mxShapeEipDatatypeChannel.prototype.paintVertexShape = function(c, x, y, w, h)
@@ -318,7 +336,7 @@ mxShapeEipDatatypeChannel.prototype.paintVertexShape = function(c, x, y, w, h)
 
 mxShapeEipDatatypeChannel.prototype.background = function(c, x, y, w, h)
 {
-	c.setGradient('#e6e6e6', '#808080', 0, 0, w, h, mxConstants.DIRECTION_SOUTH, 1, 1);
+	c.setGradient(mxUtils.getValue(this.style, 'channelColor1', '#e6e6e6'), mxUtils.getValue(this.style, 'channelColor2', '#808080'), 0, 0, w, h, mxConstants.DIRECTION_SOUTH, 1, 1);
 	c.begin();
 	c.moveTo(8, h * 0.5 + 10);
 	c.arcTo(12, 12, 0, 0, 1, 8, h * 0.5 - 10);
@@ -330,14 +348,14 @@ mxShapeEipDatatypeChannel.prototype.background = function(c, x, y, w, h)
 
 mxShapeEipDatatypeChannel.prototype.foreground = function(c, x, y, w, h)
 {
-	c.setFillColor('#e6e6e6');
+	c.setFillColor(mxUtils.getValue(this.style, 'channelColor1', '#e6e6e6'));
 	c.begin();
 	c.moveTo(w - 8, h * 0.5 - 10);
 	c.arcTo(12, 12, 0, 0, 1, w - 8, h * 0.5 + 10);
 	c.arcTo(12, 12, 0, 0, 1, w - 8, h * 0.5 - 10);
 	c.fillAndStroke();
-	
-	c.setFillColor("#fffbc0");
+
+	c.setFillColor(mxUtils.getValue(this.style, 'markerColor', '#fffbc0'));
 	c.setStrokeWidth("1");
 	
 	for(var i = 1; i * 20 + 10 < w - 14; i++)
@@ -393,9 +411,16 @@ mxShapeEipDeadLetterChannel.prototype.cst = {
 		SHAPE_DEAD_LETTER_CHANNEL : 'mxgraph.eip.deadLetterChannel'
 };
 
+mxShapeEipDeadLetterChannel.prototype.customProperties = [
+	{name: 'channelColor1', dispName: 'Channel Color 1', defVal: '#e6e6e6', type: 'color', primary:true},
+	{name: 'channelColor2', dispName: 'Channel Color 2', defVal: '#808080', type: 'color', primary:true},
+	{name: 'markerColor', dispName: 'Marker Color', defVal: '#ff0000', type: 'color', primary:true},
+	{name: 'markerIconColor', dispName: 'Marker Icon', defVal: '#ffffff', type: 'color', primary:true}
+];
+
 /**
 * Function: paintVertexShape
-* 
+*
 * Paints the vertex shape.
 */
 mxShapeEipDeadLetterChannel.prototype.paintVertexShape = function(c, x, y, w, h)
@@ -408,7 +433,7 @@ mxShapeEipDeadLetterChannel.prototype.paintVertexShape = function(c, x, y, w, h)
 
 mxShapeEipDeadLetterChannel.prototype.background = function(c, x, y, w, h)
 {
-	c.setGradient('#e6e6e6', '#808080', 0, 0, w, h, mxConstants.DIRECTION_SOUTH, 1, 1);
+	c.setGradient(mxUtils.getValue(this.style, 'channelColor1', '#e6e6e6'), mxUtils.getValue(this.style, 'channelColor2', '#808080'), 0, 0, w, h, mxConstants.DIRECTION_SOUTH, 1, 1);
 	c.begin();
 	c.moveTo(8, h * 0.5 + 10);
 	c.arcTo(12, 12, 0, 0, 1, 8, h * 0.5 - 10);
@@ -420,14 +445,14 @@ mxShapeEipDeadLetterChannel.prototype.background = function(c, x, y, w, h)
 
 mxShapeEipDeadLetterChannel.prototype.foreground = function(c, x, y, w, h)
 {
-	c.setFillColor('#e6e6e6');
+	c.setFillColor(mxUtils.getValue(this.style, 'channelColor1', '#e6e6e6'));
 	c.begin();
 	c.moveTo(w - 8, h * 0.5 - 10);
 	c.arcTo(12, 12, 0, 0, 1, w - 8, h * 0.5 + 10);
 	c.arcTo(12, 12, 0, 0, 1, w - 8, h * 0.5 - 10);
 	c.fillAndStroke();
-	
-	c.setFillColor("#ff0000");
+
+	c.setFillColor(mxUtils.getValue(this.style, 'markerColor', '#ff0000'));
 	c.setStrokeWidth("1");
 	c.begin();
 	c.moveTo(w * 0.5 - 6, h * 0.5 - 3);
@@ -440,9 +465,9 @@ mxShapeEipDeadLetterChannel.prototype.foreground = function(c, x, y, w, h)
 	c.lineTo(w * 0.5 - 6, h * 0.5 + 3);
 	c.close();
 	c.fillAndStroke();
-	
+
 	c.setStrokeWidth("2");
-	c.setStrokeColor("#ffffff");
+	c.setStrokeColor(mxUtils.getValue(this.style, 'markerIconColor', '#ffffff'));
 	c.begin();
 	c.moveTo(w * 0.5 - 4, h * 0.5);
 	c.lineTo(w * 0.5 + 4, h * 0.5);
@@ -495,9 +520,15 @@ mxShapeEipInvalidMessageChannel.prototype.cst = {
 		SHAPE_INVALID_MESSAGE_CHANNEL : 'mxgraph.eip.invalidMessageChannel'
 };
 
+mxShapeEipInvalidMessageChannel.prototype.customProperties = [
+	{name: 'channelColor1', dispName: 'Channel Color 1', defVal: '#e6e6e6', type: 'color', primary:true},
+	{name: 'channelColor2', dispName: 'Channel Color 2', defVal: '#808080', type: 'color', primary:true},
+	{name: 'markerColor', dispName: 'Marker Color', defVal: '#ffe040', type: 'color', primary:true}
+];
+
 /**
 * Function: paintVertexShape
-* 
+*
 * Paints the vertex shape.
 */
 mxShapeEipInvalidMessageChannel.prototype.paintVertexShape = function(c, x, y, w, h)
@@ -510,7 +541,7 @@ mxShapeEipInvalidMessageChannel.prototype.paintVertexShape = function(c, x, y, w
 
 mxShapeEipInvalidMessageChannel.prototype.background = function(c, x, y, w, h)
 {
-	c.setGradient('#e6e6e6', '#808080', 0, 0, w, h, mxConstants.DIRECTION_SOUTH, 1, 1);
+	c.setGradient(mxUtils.getValue(this.style, 'channelColor1', '#e6e6e6'), mxUtils.getValue(this.style, 'channelColor2', '#808080'), 0, 0, w, h, mxConstants.DIRECTION_SOUTH, 1, 1);
 	c.begin();
 	c.moveTo(8, h * 0.5 + 10);
 	c.arcTo(12, 12, 0, 0, 1, 8, h * 0.5 - 10);
@@ -522,14 +553,14 @@ mxShapeEipInvalidMessageChannel.prototype.background = function(c, x, y, w, h)
 
 mxShapeEipInvalidMessageChannel.prototype.foreground = function(c, x, y, w, h)
 {
-	c.setFillColor('#e6e6e6');
+	c.setFillColor(mxUtils.getValue(this.style, 'channelColor1', '#e6e6e6'));
 	c.begin();
 	c.moveTo(w - 8, h * 0.5 - 10);
 	c.arcTo(12, 12, 0, 0, 1, w - 8, h * 0.5 + 10);
 	c.arcTo(12, 12, 0, 0, 1, w - 8, h * 0.5 - 10);
 	c.fillAndStroke();
-	
-	c.setFillColor("#ffe040");
+
+	c.setFillColor(mxUtils.getValue(this.style, 'markerColor', '#ffe040'));
 	c.setStrokeWidth("1");
 	c.begin();
 	c.moveTo(w * 0.5 - 6, h * 0.5 + 5);

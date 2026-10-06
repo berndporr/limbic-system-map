@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
 (function()
 {
 	// Adds ER shapes
@@ -7,7 +11,7 @@
 		var sb = this;
 
 		// Reusable cells
-		var row = new mxCell('Item', new mxGeometry(0, 0, 40, 30), 'text;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;');
+		var row = new mxCell('Item', new mxGeometry(0, 0, 40, 30), 'text;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;whiteSpace=wrap;html=1;');
 		row.vertex = true;
 
 		// Predefined dimensions
@@ -27,7 +31,7 @@
 			
 			if (m != null)
 			{
-		    	var cell1 = new mxCell(m, new mxGeometry(-1, 0, 0, 0), 'resizable=0;html=1;align=left;verticalAlign=bottom;');
+		    	var cell1 = new mxCell(m, new mxGeometry(-1, 0, 0, 0), 'resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;');
 		    	cell1.geometry.relative = true;
 		    	cell1.setConnectable(false);
 		    	cell1.vertex = true;
@@ -36,7 +40,7 @@
 			
 			if (n != null)
 			{
-		    	var cell2 = new mxCell(n, new mxGeometry(1, 0, 0, 0), 'resizable=0;html=1;align=right;verticalAlign=bottom;');
+		    	var cell2 = new mxCell(n, new mxGeometry(1, 0, 0, 0), 'resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;');
 		    	cell2.geometry.relative = true;
 		    	cell2.setConnectable(false);
 		    	cell2.vertex = true;
@@ -49,11 +53,11 @@
 		this.setCurrentSearchEntryLibrary('er');
 		
 		var fns = [
-	   		this.addDataEntry(dt, 180, 160, 'Table 1', '7Zhvb5swEMY/DW8nwCNr3kL/aGomTW33AdxwAUuOTW2nkH36ncEkaihqooSQVZWI5DufL/bvCY8CHkmW1Z2iRf5LpsA9cuORRElpmtGySoBzL/RZ6pFrLwx9/Hjhbc9sUM/6BVUgzD4LwmbBK+UraDJP9JlDk9VmzV1W57SwQ1PPklgbqswj+2tzxMfEXApDmQCFiaCOOaeFZnV5k8kZT2d0LVembdRG8YJVkD7IUrtaJcsZNrOhbb7A5o9uM3aacpYJHM/xlPYbYwUa9zKj2rgKdyxQBqpeNHXKcbkDuQSj1lhSstTkruKqwefnwLK8XTZxSaqbRLZZuyWNAwf7ffCkA76XOW7ZMMofYG6oyGr8b+laRKmSxRNVGRiXKCSzcG5e8bgbjozzRHJpRRJS2E5GFm6Sw6Jd+yyNkctWC3fyTdP61FGMF3JI/G+RF+F2E4yDbYyXLVcmkUIbhT8N2wNQoRKsSvspFL6v0NoxdDp8JBg5gV7fO3r9vj9MMSFsuFXsYDH8HTF27wqJMBdclhjmLE1B7EuZfHgfkIGoRh2qfwR7WcHP65HZtg7T1Ma6oHMmslmzcrIDPxoAftX/E48GEmPyX1jSrlKXZUmTM1rSjyP1OvlNAylr+x3lR5PR/OiqgxT/lGAiuHQ7OjXrEexn+mU/R9vP9Iz2E/if1X+mo/lPEPQY0NhohzOgHtgjGFDQfRj+cqBDHSgIz2lBxz5FX6wFBT2Uz+FB3UfdxoPIp/WgPtrDmxCG25d99dybd4H/AA=='),
-	   		this.addDataEntry(dt, 180, 160, 'Table 2', '7ZjRbpswFIafhtsJ48KaW1jbi2bS1PYF3OCAJcdGtlvInn7H2CRLE9RECYFOk4jkc3x8Yn9/+BUIcLZqHhSpyp8ypzzAdwHOlJTGjVZNRjkPopDlAf4RRFEInyC675lF7WxYEUWFOWZB5Ba8E/5GXeaFvHLqstqsuc/qklR2aNpZnGpDlHlmv20Oh5BYSGEIE1RBArUx56TSrC13mZLxfE7W8s10jbooXbKG5k+y1r5WyXoOzWxomy+h+bPfjJ0mnBUCxgs4pf3GVFENe5kTbXyFPxZVhja9aNqU5/JA5YoatYaSmuWm9BW3Dl9YUlaU3bLEJ4l2iWKzdksaBh72YfB4D3wvc9iyYYQ/0YUhomjx79K1iHIlqxeiCmp8opLMwrl7h+NuODLOM8mlFUlIYTsZWflJTpfd2ldpjFz5QPmTb5q2p45TuIBDFn6Lgxi2m0GMtjFctlyZTAptFPw0bA8KCtXUqnScQtFhhdaeodfhM8HwBfS62dPr1yOc9v4RnaabEDbc6na2JB/vDQlIl1zWEJYsz6k4ljX+9G5IBmIb77EFK4DE2Gg7m3G1qa7Igoli7lYmH9jHA7Bvdrn//TuPBtIi+RK+hCbtS4f0GsqXvvf50om6TdeXktF86bbHl8ZGez1f6mE/gi/NvoQvTfv/0uyKvoTCMwW7+F1Dc9b1O8uPZqP5EUI9hoSnbkiXhj2CAaH9R+X/DnSqA23UuYoFnfuMPVkLQj2Ur+FB+w/CzoNu/lkP6qM9vAlBuH0V2M7tvCn8Aw=='),
-	   		this.addDataEntry(dt, 180, 30, 'Table Row 1', 'xVXbboMwDP0aXicKY9oz7PLSvbT7gYy4EC2NUeIWuq+fQ0JZd9EqbdMkkHJObGOfAyHJq+1wb0XXPqAEneS3SV5ZRAqr7VCB1kmWKpnkN0mWpXwn2d0Xu4txN+2EBUPnJGQhYS/0DgITCEcHHQnXis4vSTx5qnQkLK3Vi+dSxjUaEsqAZbwYsdaic2qMDkyrtFyKA+5oqjOhcqMGkCvsXYy12C+5mIvFN1x8HXvxWGjVGF7XPJ9/YmnBcStL4SgWcGTxGSrU6BsyaGB8itbvqDg4WILhS/FGKip3D7gFsgcO6ZWkNkZcB4HTFlTTxrQ8csIF3BxTZyt4Ed343Jn8fGe4Y1JCr6AmYZrRpFMTvHLSYvcobAMUiQ6V1/B2z9Me5f6oE2EXNzVsptwnJMJtBDYOfiw6Tl2UfLEOVXpRJAW3WzFezJgvH26pQsOe8RvkawAb2YM38zyDsv8z6PKHBhnj4WzQj7UHqaZ6/kNAlm6jsWfYKinBnKtp/q2m+R9JWnyQlE+Gf1Z1OnFCbOk6USvTLEPm1R/oPJzq+fZVLn5Hd4bzH2bcO/kBvQI='),
-	   		this.addDataEntry(dt + ' fk pk foreign key primary', 180, 30, 'Table Row 2', 'xVXbTsMwDP2avqKupYjnljEhxguDDwir10ZkcUm8tePrcZpsYxsTQ9ykVMo5sV37nF6itJh3IyOa+g5LUFE6jNLCIJLfzbsClIqSWJZRehUlScxXlFwfOR30p3EjDGg6JSHxCUuhFuAZT1haqUDYWjRuS+LJUbklYWgiXx0XM56iJiE1GMaDHislGiv7aM/UUpVjscIFreusUT6THZT32NoQa7AdczEbis+4+CT04rBQstK8n/J87o65AcutjIWlUMCSwWcoUKFrSKOG/i5K7VFhcDAE3VHxeiooNwKcA5kVh7SypDpEXHqB4xpkVYe0NHDCelxtUrdW8Ca48bEz6enOcMckhbqHKQld9SbtmuCUKw02D8JUQIFoUDoNh0uediP3oU6ETThUMFvnPiERzgMwYfBN0X7qLOfFOhTxWRZl3G7BeLDFvFy4oQI1e8ZPkKsBbGQLzszTDEr+z6DzA4Oub79mkdYObi36tvr7bwuyejOFLcNaliXoU2VNP5U1/SVVswNVH7V8WcDN1T9ru/7y+NjcNmIqdTX2mRd/IH63K/L7Rzz7GTMYbv88/dnOj+kN'),
-	   		this.addDataEntry(dt + ' fk pk foreign key primary', 180, 30, 'Table Row 3', 'xVXbTsMwDP2avqKupYjnloEQQ0IMPiCsXhuRxSXxaMfX4zTpriCGxISUSjkntmuf00uUFovuxoimvscSVJSOo7QwiOR3i64ApaIklmWUXkVJEvMVJdffnI7607gRBjQdk5D4hHehluAZT1haqUDYWjRuS+LFUbklYWgqPxwXM56hJiE1GMajHislGiv7aM/UUpUTscIlDXUGlM9lB+UjtjbEGmwnXMyG4nMuPg29OCyUrDTvZzyfu2NuwHIrE2EpFLBk8BUKVOga0qihv4tSe1QYHAxB9614PRWUuwFcAJkVh7SypDpEXHqB4xpkVYe0NHDCelytUzdW8Ca48bUz6fHOcMckhXqEGQld9SbtmuCUKw02T8JUQIFoUDoNx+887VruQ50Im3CoYD7kviARLgbLwuDrov3UWc6LdSjisyzKuN2C8WiDeblwQwVq9oyfIFcD2MgWnJnHGZT8n0HnBwY93P3OIq0d3Fj0a/XjPfW33xbnDLJ6c4Utw1qWJehjZU1/lDU9karZgarPWr4t4fbqn7Udvjw+NreNmEldTXzmxZ742QnE73ZF3n7Es78xg+Hmz9Of7fyYPgE='),
+	   		this.addDataEntry(dt, 180, 160, 'Table 1', '7ZnfbpswFMafhtuJPyNrbqFbNy2TpqZ7ADc+AUvGZsYZSZ9+x9gkVQhtMqVkopGIZB8fn9jfz/4uwIvSYn2nSJn/kBS4F332olRJqW2rWKfAuRf6jHrRrReGPv688EvPaNCM+iVRIPQxE0I74Q/hK7CRB/LIwUYrveEuWuWkNE3djEZJpYnSc/ZkYpGPgYUUmjABCgNB0+eclBVr0m0kZ5zOyEaudFuo7SVLtgZ6L+vK5SpZz7CY6ZriSyw+d4sxw4SzTGB7gbs0/5goqHAtM1Jpl5Hrgrum2yEoDetelZqQk+gOZAFabTClZlTnLuPGKunnwLK8nRa7IKlsINvO3YmODaf7YQZRh8HL8qNOZodSsScjOnciPUfS9GtWcCLgKxC6F0ok3bTSMs5TyaXhJqSADjqTRJUsH4jKQLtAKZnQzZbjBB8UIfU/xF6Ma02xH+z6+Jh0pVMpKq3wiJgagKRqMLQSLUtXlMOyra+cxKb9KLWWxSkww8MwN05uh+w1ttEZ0H7soP35vRcubkEzwu9hoYnIuEUhhOnuUBzgdVDBrWr7cu7fJYliLrk5Urc5oxTwXiV1zjTMS7IwSTWa0z/cqOjVGxWdKLorttPn5GqEo10IovECrAStOiS36zwKbtyB+0uw3yv4dnthxK092tykQpBMZDM7c7J3BuLhz8C6/yLGZz0TR5U776GYXM38KDP3z2PmkwHN/NPxaIe550BZW+8tnXwyeie/6ZA11zL0g//dyAdGPmbjnl6Ne0jjng5o3IH/Tp17OnrnDoIe67404YtZdw/zMVt30H2LdfXuN/TuIBzSvE94PTYq8w56IIzJvbvvx6x7R+/Vvfugj8i+sbv7vmHTn3/++As='),
+	   		this.addDataEntry(dt, 180, 160, 'Table 2', '7Zlvb9owEMY/Td5O+VNYeZt07aQyaSr9Ai4+EkuOHTlmgX76nWOnUELWINFQZUgg+S7nI35+9gMKXpTkmwdFiuyXpMC96IcXJUpKbUf5JgHOvdBn1IvuvDD08e2F9x1Xg/qqXxAFQveZENoJfwhfg808kxcONlvqLXfZMiOFGer6ahSXmii9YK8mF/mYWEqhCROgMBHUMeekKFldbjMZ43ROtnKtm0ZNFK/YBuiTrEpXq2Q1x2YmNM1X2HzhbsZcJpylAsdLXKX5xFhBifcyJ6V2FZnOuRtWGdOwKMjSzK5Qacy5VYPSsOlUrk452R5A5qDVFksqRnXmKm6tun4GLM2aaROXJKVNpG9zdyBw4Fgc5xK1uPwbCWpnVi0VezUguBNuH1MdVyznRMBPIPQgFUu6beRmnCeSS8NSSAEtnKaIKlk8E5WCdolCMqHrJU9ifKEIif9t4k3wXhOMg12ML1OudCJFqRVuG9MDkF4FhmCsZeGaclg1/ZWT2IxfpNYyd8Ee615cw+Nct055R+8jzNEZKN+0KP9+RJnuH4NO2rgQzQh/gqUmIuWWjRAm3LE5AvCopO9k3Nf38MBJlHTFzR67yxilIM50xKIPj9j0ROlds50+J3cjHD1FEI0nYi1o2eL5dp+9EE9aiM1RDf1LE24s1NbGJcJjIp3bmdODLTAZfgts3gPbP43hWbdEr3bn3RPTq7n3MveDL/IzmPux7fRZ5v69y9y7aY/L3KejN/fbDnO/NOEvY+4dW2DM5j67mvuFfrnPBjT3wO+PeZgzD5Q1/T7T1GejN/Ug6HD16Ku7+sDMx+ziQfvB2NXGh7HxN9qD+PgJD9pG5eNBB4QxGXn78Zo18pv/1ci7oI/IyTHc/Xtiy/f/XPkL'),
+	   		this.addDataEntry(dt, 180, 30, 'Table Row 1', 'xVVdj5swEPw1vFYEmuqe4drrQ/py6R/Yizdg1XiRvTmS+/VdY3P5uJxK1FYngeQZ1sN6BpusrLv9g4O+/UEKTVZ+zcraEXEcdfsajcmKXKusvM+KIpc7K76983QxPs17cGh5zoQiTngGs8PIRMLzwSTCt9CHIcNToCrP4HitXwKXC96QZdAWneDFiI2B3uuxOjKtNmoFB9rxpDOhaqv3qB5p8KnW0bASMZ/EtyK+Tr0EDEY3VsYbWV94Y+XQSysr8JwEPDv6hTUZCg1Zsji+xZgL6rzNoD20mnHdwyYQg0QiXMudScLJKXSM+3fdHqlk9QNSh+wOUjJoxW2quIuJ5C3qpk3TysSBj7h5nXrMTgYpvutRljdGKaaHBZLTLyFBk1y4jNcPujNg8TuCuqAqUocppzkGK0f9T3ANciJ60pbHJS8rucSEOv+0zJbSay14ccRyhXLHNVlJWL63oIES+4Ah+oqpT6IGt5O+Sw6H8RMxU5fArCyLj8vy8/wspWPWYB5xw2AbE523NsCj81fiuWrYmUmn7qHSk17YCyTWbU34gO5brRTauZ6Wf/S0vNHSJHZc/81qYOQoscDyPe+s8m9yeu1zVnTLN9GFjfax6U2nZqytvJxx2jarOPPLf8hzf+706ZZZ/tN8Z8n9VcACj7/jWH76t/4N'),
+	   		this.addDataEntry(dt + ' fk pk foreign key primary', 180, 30, 'Table Row 2', 'xVXbjpswEP0aXisCpeozpHtR05dN+wHeeAJWjYfak0L26zvGzuauErVSJJA8h/FhfM7YTvKqHR6t6JpvKEEn+ZckrywihVE7VKB1kqVKJvk8ybKU3yR7uPJ1Nn5NO2HB0JQJWZjwW+gNBCQAjrY6Aq4RnR+SePVQ6UhYWqo3j6Ucr9CQUAYsx7Mx1lp0To3ZAWmUlguxxQ3teHZRuVYDyBfsXcy12C+YzEXyNZMvYy0+FlrVhscrXp//Y2nBcSkL4SgSOLL4EyrU6AsyaGD8i9Yn0HGZnjtKAZZguCrnCEUtHwFbILvllF5JamLG5yB52oCqmzgtj5hwIa7fp+7N4UH057JX+Y1esaq8qgatevMW6bjMU/9cr1otDDyBkCdQiXK7M2KKgtJi913YGigCHSpD45KLkh8WoUo/FEnBtVYcz/YxPz7dUoWGLeSG8hzAvvbgvS0Ju0iqYb3jt1FhP35FImxv8TK7n5cfz7x8+HrVTa6ZlNAvsCJhah20N8aHe+0vGHRRsiOZDvU73WrI6q2176F5o6QE3nZl3yiCZSdWPqnnU8s3GLU67r1Jqud/VT2/UfRIttfnZjah+TQxgrjjN0a6Myff65xkbnFm7g+jfm3geX5ni3enZ8gtHRupTL0IMz/dvweGY3cON2LxX3tiEt0/NQWH+1s8pB9e8n8A'),
+	   		this.addDataEntry(dt + ' fk pk foreign key primary', 180, 30, 'Table Row 3', 'xVXbjpswEP0aXisCpeozpN2tmkrVpv0AbzwBa42H2pNC9us7xs5lc9EStepKIHkO48P4nLGd5FU73FnRNd9Qgk7yT0leWUQKo3aoQOskS5VM8nmSZSm/Sfb5ytfZ+DXthAVDUyZkYcJvoTcQkAA42uoIuEZ0fkji0UOlI2FpqZ49lnK8QkNCGbAcz8ZYa9E5NWYHpFFaLsQWN7Tj2UXlWg0gH7B3Mddiv2AyF8nXTL6MtfhYaFUbHq94ff6PpQXHpSyEo0jgyOITVKjRF2TQwPgXrU+gl2V67igFWILhqpwjFLW8A2yB7JZTeiWpiRkfg+RpA6pu4rQ8YsKFuN5PPZjDg+jPZa/yG71iVXlVDVr17C3ScZmn/rletVoYuAchT6AS5XZnxBQFpcXuh7A1UAQ6VIbGJRclPyxClb4rkoJrrTieHWJ+fLqlCg1byA3lOYB97cF7WxJ2kVTDesdvo8J+/IhE2MYumORl9nZevj/z8vvXq25yzaSEfoAVCVProL0xPjxof8Ggi5LtZTrV73ireQmR1Vtr30PzRkkJvO3KvlEEy06sfFLPp5ZvMGr1Larnr6qe3yh6JDvoczOb0HyaGEHc8Rsj3ZmT+zonmVucmfvTqF8b+DJ/Y4t3p2fILR0bqUy9CDM/nPRA8f97YHjpzvFGLP5pT0yi+6um4PBwi4f040v+Dw=='),
 	   		this.addEntry(dt + ' list', function()
 			{
 				var cell = new mxCell('List', new mxGeometry(0, 0, 160, 110),
@@ -65,16 +69,16 @@
 		
 				return sb.createVertexTemplateFromCells([cell], cell.geometry.width, cell.geometry.height, 'List');
 			}),
-			this.addEntry(dt + ' list', function()	
-			{	
-				return sb.createVertexTemplateFromCells([row.clone()], row.geometry.width, row.geometry.height, 'List Item 1');	
+			this.addEntry(dt + ' list', function()
+			{
+				return sb.createVertexTemplateFromCells([row.clone()], row.geometry.width, row.geometry.height, 'List Item 1');
 			}),
-			this.addEntry(dt + 'table row', function()	
-			{	
+			this.addEntry(dt + 'table row', function()
+			{
 	   			var cell = new mxCell(row.value, new mxGeometry(0, 0, 90, row.geometry.height), 'shape=partialRectangle;fillColor=none;align=left;verticalAlign=middle;strokeColor=none;spacingLeft=34;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;dropTarget=0;');	
-	   			cell.vertex = true;	
+	   			cell.vertex = true;
 
-	   			var cell1 = sb.cloneCell(row, '');	
+	   			var cell1 = sb.cloneCell(row, '');
 	   			cell1.connectable = false;	
 	   			cell1.style = 'shape=partialRectangle;top=0;left=0;bottom=0;fillColor=none;stokeWidth=1;dashed=1;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[];portConstraint=eastwest;part=1;'	
 	   			cell1.geometry.width = 30;	
@@ -82,8 +86,8 @@
 
 				return sb.createVertexTemplateFromCells([cell], cell.geometry.width, cell.geometry.height, 'List Item 2');	
 			}),
-			this.addEntry(dt + 'table row divider hline line separator', function()	
-			{	
+			this.addEntry(dt + 'table row divider hline line separator', function()
+			{
 				var divider = new mxCell('', new mxGeometry(0, 0, 60, 10), 'line;strokeWidth=1;rotatable=0;dashed=0;labelPosition=right;align=left;verticalAlign=middle;spacingTop=0;spacingLeft=6;points=[];portConstraint=eastwest;');	
 				divider.vertex = true;	
 
@@ -92,11 +96,11 @@
 	   		this.addEntry(dt + 'table', function()
 			{
 	   			var cell = new mxCell('Entity', new mxGeometry(0, 0, 160, 120),
-	   		    	'swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;');
+	   		    	'swimlane;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;arcSize=4;whiteSpace=wrap;html=1;');
 	   			cell.vertex = true;
 	   			
 	   			var cell1 = new mxCell('+Attribute1\n+Attribute2\n+Attribute3', new mxGeometry(0, 30, 160, 90),
-	   				'align=left;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;');
+	   				'align=left;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;fontSize=12;verticalAlign=top;rotatable=0;part=1;html=1;whiteSpace=wrap;');
 	   			cell1.vertex = true;
 
 				cell.insert(cell1);
@@ -110,8 +114,10 @@
 				100, 40, 'Attribute', 'Attribute', null, null, dt + 'attribute chen'),
 			this.createVertexTemplateEntry('ellipse;whiteSpace=wrap;html=1;align=center;fontStyle=4;',
 				100, 40, 'Attribute', 'Key Attribute', null, null, dt + 'attribute key chen'),
-			this.createVertexTemplateEntry('ellipse;whiteSpace=wrap;html=1;align=center;',
-				100, 40, '<span style="border-bottom: 1px dotted">Attribute</span>', 'Weak Key Attribute', null, null, dt + 'attribute key weak chen'),
+			// Dotted underline lives in the style (FONT_UNDERLINE | FONT_UNDERLINE_DOTTED), not in
+			// label HTML, so it survives editing the label [jgraph/drawio#5536]
+			this.createVertexTemplateEntry('ellipse;whiteSpace=wrap;html=1;align=center;fontStyle=20;',
+				100, 40, 'Attribute', 'Weak Key Attribute', null, null, dt + 'attribute key weak chen'),
 			this.createVertexTemplateEntry('ellipse;whiteSpace=wrap;html=1;align=center;dashed=1;',
 				100, 40, 'Attribute', 'Derived Attribute', null, null, dt + 'attribute derived chen'),
 			this.createVertexTemplateEntry('ellipse;shape=doubleEllipse;margin=3;whiteSpace=wrap;html=1;align=center;',
@@ -123,6 +129,7 @@
 			this.createVertexTemplateEntry('shape=rhombus;double=1;perimeter=rhombusPerimeter;whiteSpace=wrap;html=1;align=center;',
 				120, 60, 'Relationship', 'Identifying Relationship', null, null, dt + 'chen'),
 			this.createVertexTemplateEntry('ellipse;shape=cloud;whiteSpace=wrap;html=1;align=center;', 100, 60, 'Cloud', 'Cloud', null, null, dt + 'cloud'),
+			
 	   	 	this.addEntry(dt + 'hierarchy', function()
 	   		{
 			   	var cell = new mxCell('', new mxGeometry(0, 0, 100, 100), 'rounded=1;absoluteArcSize=1;html=1;arcSize=10;');
@@ -138,7 +145,9 @@
 				
 				return sb.createVertexTemplateFromCells([cell], cell.geometry.width, cell.geometry.height, 'Hierarchy'); 
 	   		}),
+			
 			this.createVertexTemplateEntry('shape=note;size=20;whiteSpace=wrap;html=1;', w, h, 'Note', 'Note', null, null, dt + 'note'),
+			
 			this.addEntry(dt + 'relation chen', function()
 			{
 				return sb.createEdgeTemplateFromCells(

@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2006-2017, JGraph Ltd
- * Copyright (c) 2006-2017, Gaudenz Alder
+ * Copyright (c) 2006-2017, JGraph Holdings Ltd
+ * Copyright (c) 2006-2017, draw.io AG
  */
 TrelloClient = function(editorUi)
 {
@@ -12,7 +12,7 @@ TrelloClient = function(editorUi)
 mxUtils.extend(TrelloClient, DrawioClient);
 
 TrelloClient.prototype.key = (window.location.hostname == 'test.draw.io') ?
-	'e73615c79cf7e381aef91c85936e9553' : 'e73615c79cf7e381aef91c85936e9553';
+	'e89d109082298ce91f6576f82f458551' : 'e89d109082298ce91f6576f82f458551';
 
 TrelloClient.prototype.baseUrl = 'https://api.trello.com/1/';
 
@@ -53,6 +53,9 @@ TrelloClient.prototype.authenticate = function(fn, error, force)
 			expiration: remember ? 'never' : '1hour',
 			success: function()
 			{
+				// backup from the token since viewer removes it for some reason
+				localStorage.setItem('drawio_trello_token', localStorage['trello_token']);
+
 				if (success != null)
 				{
 					success();
@@ -116,18 +119,21 @@ TrelloClient.prototype.getFile = function(id, success, error, denyConvert, asLib
 		{ 
 			window.clearTimeout(timeoutThread);
 	    	
-		    	if (acceptResponse)
-		    	{
+		    if (acceptResponse)
+		    {
 				var binary = /\.png$/i.test(meta.name);
+				var headers = {
+					Authorization: 'OAuth oauth_consumer_key="' + Trello.key() + '", oauth_token="' + Trello.token() + '"'
+				};
 				
 				// TODO Trello doesn't allow CORS requests to load attachments. Confirm that
 				// and make sure that only a proxy technique can work!
 				// Handles .vsdx, Gliffy and PNG+XML files by creating a temporary file
 				if (/\.v(dx|sdx?)$/i.test(meta.name) || /\.gliffy$/i.test(meta.name) ||
-					(!this.ui.useCanvasForExport && binary))
+					(!Editor.useCanvasForExport && binary))
 				{
 					this.ui.convertFile(PROXY_URL + '?url=' + encodeURIComponent(meta.url), meta.name, meta.mimeType,
-						this.extension, success, error);
+						this.extension, success, error, null, headers);
 				}
 				else
 				{
@@ -143,10 +149,10 @@ TrelloClient.prototype.getFile = function(id, success, error, denyConvert, asLib
 					{
 						window.clearTimeout(timeoutThread);
 				    	
-					    	if (acceptResponse)
-					    	{
-					    		//keep our id which includes the cardId
-					    		meta.compoundId = id;
+					    if (acceptResponse)
+					   	{
+					    	//keep our id which includes the cardId
+					    	meta.compoundId = id;
 					    		
 							var index = (binary) ? data.lastIndexOf(',') : -1;
 	
@@ -172,8 +178,8 @@ TrelloClient.prototype.getFile = function(id, success, error, denyConvert, asLib
 							{
 								success(new TrelloFile(this.ui, data, meta));
 							}
-					    	}
-			    		}), mxUtils.bind(this, function(err, req)
+					    }
+			    	}), mxUtils.bind(this, function(err, req)
 					{
 						window.clearTimeout(timeoutThread);
 					    	
@@ -189,9 +195,9 @@ TrelloClient.prototype.getFile = function(id, success, error, denyConvert, asLib
 				    		}
 				    	}
 					}), binary || (meta.mimeType != null &&
-						meta.mimeType.substring(0, 6) == 'image/'));
+						meta.mimeType.substring(0, 6) == 'image/'), null, null, null, headers);
 				}
-		    	}
+		    }
 		}), mxUtils.bind(this, function(err)
 		{
 			window.clearTimeout(timeoutThread);
@@ -245,7 +251,7 @@ TrelloClient.prototype.insertFile = function(filename, data, success, error, asL
 			}), error);
 		});
 						
-		if (this.ui.useCanvasForExport && /(\.png)$/i.test(filename))
+		if (Editor.useCanvasForExport && /(\.png)$/i.test(filename))
 		{
 			this.ui.getEmbeddedPng(mxUtils.bind(this, function(pngData)
 			{
@@ -294,7 +300,7 @@ TrelloClient.prototype.saveFile = function(file, success, error)
 	
 	var callback = mxUtils.bind(this, function()
 	{
-		if (this.ui.useCanvasForExport && /(\.png)$/i.test(file.meta.name))
+		if (Editor.useCanvasForExport && /(\.png)$/i.test(file.meta.name))
 		{
 			this.ui.getEmbeddedPng(mxUtils.bind(this, function(data)
 			{
@@ -442,7 +448,6 @@ TrelloClient.prototype.showTrelloDialog = function(showFiles, fn)
 
 	var hd = document.createElement('h3');
 	mxUtils.write(hd, showFiles? mxResources.get('selectFile') : mxResources.get('selectCard'));
-	hd.style.cssText = 'width:100%;text-align:center;margin-top:0px;margin-bottom:12px';
 	content.appendChild(hd);
 
 	var div = document.createElement('div');
@@ -452,7 +457,7 @@ TrelloClient.prototype.showTrelloDialog = function(showFiles, fn)
 	content.appendChild(div);
 
 	var dlg = new CustomDialog(this.ui, content);
-	this.ui.showDialog(dlg.container, 340, 270, true, true);
+	this.ui.showDialog(dlg.container, 340, 290, true, true);
 	
 	dlg.okButton.parentNode.removeChild(dlg.okButton);
 	
@@ -462,8 +467,8 @@ TrelloClient.prototype.showTrelloDialog = function(showFiles, fn)
 		var div = document.createElement('div');
 		div.style = 'width:100%;text-overflow:ellipsis;overflow:hidden;vertical-align:middle;' +
 			'padding:2px 0 2px 0;background:' + (linkCounter % 2 == 0?
-			((uiTheme == 'dark') ? '#000' : '#eee') :
-			((uiTheme == 'dark') ? '' : '#fff'));
+			((Editor.isDarkMode()) ? '#000' : '#eee') :
+			((Editor.isDarkMode()) ? '' : '#fff'));
 		var link = document.createElement('a');
 		link.style.cursor = 'pointer';
 		
@@ -497,7 +502,7 @@ TrelloClient.prototype.showTrelloDialog = function(showFiles, fn)
 	var selectAtt = mxUtils.bind(this, function()
 	{
 		linkCounter = 0;
-		div.innerHTML = '';
+		div.innerText = '';
 		this.ui.spinner.spin(div, mxResources.get('loading'));
 		
 		var callback = mxUtils.bind(this, function()
@@ -562,7 +567,7 @@ TrelloClient.prototype.showTrelloDialog = function(showFiles, fn)
 		if (page == null)
 		{
 			linkCounter = 0;
-			div.innerHTML = '';
+			div.innerText = '';
 			page = 1;
 		}
 		
@@ -606,16 +611,19 @@ TrelloClient.prototype.showTrelloDialog = function(showFiles, fn)
 				{
 					if (page == 1)
 					{
-						div.appendChild(createLink(mxResources.get('filterCards') + '...', mxUtils.bind(this, function()
+						div.appendChild(createLink(mxResources.get('filterCards') + '...',
+							mxUtils.bind(this, function()
 						{
-							var dlg = new FilenameDialog(this.ui, filter, mxResources.get('ok'), mxUtils.bind(this, function(value)
+							var dlg = new FilenameDialog(this.ui, filter, mxResources.get('ok'),
+								mxUtils.bind(this, function(value)
 							{
 								if (value != null)
 								{
 									filter = value;
 									selectCard();
 								}
-							}), mxResources.get('filterCards'), null, null, 'http://help.trello.com/article/808-searching-for-cards-all-boards');
+							}), mxResources.get('filterCards'), null, null,
+								'http://help.trello.com/article/808-searching-for-cards-all-boards');
 							this.ui.showDialog(dlg.container, 300, 80, true, false);
 							dlg.init();
 						})));
@@ -686,7 +694,21 @@ TrelloClient.prototype.isAuthorized = function()
 	//TODO this may break if Trello client.js is changed
 	try
 	{
-		return localStorage['trello_token'] != null; //Trello.authorized(); doesn't work unless authorize is called first
+		var token = localStorage['trello_token']; //Trello.authorized(); doesn't work unless authorize is called first
+
+		if (token == null)
+		{
+			token = localStorage['drawio_trello_token'];
+
+			// Restores token from backup
+			if (token != null)
+			{
+				localStorage.setItem('trello_token', token);
+			}
+			
+		}
+
+		return token != null;
 	}
 	catch (e)
 	{
@@ -702,6 +724,6 @@ TrelloClient.prototype.isAuthorized = function()
  */
 TrelloClient.prototype.logout = function()
 {
-	localStorage.removeItem('trello_token');
+	localStorage.removeItem('drawio_trello_token');
 	Trello.deauthorize();
 };

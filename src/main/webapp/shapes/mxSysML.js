@@ -1,6 +1,5 @@
 /**
- * $Id: mxSysML.js,v 1.0 2014/07/23 07:05:39 mate Exp $
- * Copyright (c) 2006-2014, JGraph Ltd
+ * Copyright (c) 2006-2014, JGraph Holdings Ltd
  */
 
 //**********************************************************************************************************************************************************
@@ -24,12 +23,15 @@ mxShapeSysMLComposite.prototype.paintForeground = function(c, x, y, w, h)
 	{
 		var shape = mxCellRenderer.defaultShapes[this.style['symbol0']];
 
-		c.save();
-			
-		var tmp = new shape();
-		tmp.style = this.style;
-		shape.prototype.paintVertexShape.call(tmp, c, x, y, w, h);
-		c.restore();
+		if (shape != null)
+		{
+			c.save();
+
+			var tmp = new shape();
+			tmp.style = this.style;
+			shape.prototype.paintVertexShape.call(tmp, c, x, y, w, h);
+			c.restore();
+		}
 
 		c.setDashed(false);
 			
@@ -966,7 +968,8 @@ mxMarker.addMarker('sysMLPackCont', function(c, shape, type, pe, unitX, unitY, s
 });
 
 //**********************************************************************************************************************************************************
-//Required Interface
+//Required Interface (LEGACY, misnamed: draws the ball = provided-interface symbol; kept
+//unchanged so stored diagrams keep rendering — new content uses endArrow=oval instead)
 //**********************************************************************************************************************************************************
 mxMarker.addMarker('sysMLReqInt', function(c, shape, type, pe, unitX, unitY, size, source, sw, filled)
 {
@@ -984,7 +987,8 @@ mxMarker.addMarker('sysMLReqInt', function(c, shape, type, pe, unitX, unitY, siz
 });
 
 //**********************************************************************************************************************************************************
-//Provided Interface
+//Provided Interface (LEGACY, misnamed: draws the socket = required-interface symbol; kept
+//unchanged so stored diagrams keep rendering — new content uses endArrow=halfCircle instead)
 //**********************************************************************************************************************************************************
 mxMarker.addMarker('sysMLProvInt', function(c, shape, type, pe, unitX, unitY, size, source, sw, filled)
 {
@@ -3142,3 +3146,128 @@ mxShapeSysMLUseCaseExtensionPoints.prototype.getConstraints = function(style, w,
 	
 	return (constr);
 };
+
+//**********************************************************************************************************************************************************
+//Port
+//**********************************************************************************************************************************************************
+/**
+* Extends mxShape.
+*/
+function mxShapeSysMLPort(bounds, fill, stroke, strokewidth)
+{
+	mxShape.call(this);
+	this.bounds = bounds;
+	this.fill = fill;
+	this.stroke = stroke;
+	this.strokewidth = (strokewidth != null) ? strokewidth : 1;
+};
+
+/**
+* Extends mxShape.
+*/
+mxUtils.extend(mxShapeSysMLPort, mxShape);
+
+mxShapeSysMLPort.prototype.cst = {
+		PORT : 'mxgraph.sysml.port'
+};
+
+mxShapeSysMLPort.prototype.customProperties = [
+	{name: 'sysMLPortType', dispName: 'Port Type', type: 'enum',
+		enumList:[
+			{val:'empty', dispName:'Empty'},
+			{val:'flowN', dispName:'Flow Up'},
+			{val:'flowE', dispName:'Flow Right'},
+			{val:'flowS', dispName:'Flow Down'},
+			{val:'flowW', dispName:'Flow Left'},
+			{val:'doubleH', dispName:'Double Horizontal'},
+			{val:'doubleV', dispName:'Double Vertical'}
+		]}
+];
+
+/**
+* Function: paintVertexShape
+* 
+* Paints the vertex shape.
+*/
+mxShapeSysMLPort.prototype.paintVertexShape = function(c, x, y, w, h)
+{
+	c.translate(x, y);
+	c.rect(0, 0, w, h);
+	c.fillAndStroke();
+	var portType = mxUtils.getValue(this.style, 'sysMLPortType', 'empty');
+	
+	switch (portType)
+	{
+		case 'flowN' :
+				c.begin();
+				c.moveTo(0.25 * w, 0.5 * h);
+				c.lineTo(0.5 * w, 0.25 * h);
+				c.lineTo(0.75 * w, 0.5 * h);
+				c.moveTo(0.5 * w, 0.25 * h);
+				c.lineTo(0.5 * w, 0.75 * h);
+				c.stroke();
+			break;
+		case 'flowE' :
+				c.begin();
+				c.moveTo(0.5 * w, 0.25 * h);
+				c.lineTo(0.75 * w, 0.5 * h);
+				c.lineTo(0.5 * w, 0.75 * h);
+				c.moveTo(0.75 * w, 0.5 * h);
+				c.lineTo(0.25 * w, 0.5 * h);
+				c.stroke();
+			break;
+		case 'flowS' :
+				c.begin();
+				c.moveTo(0.25 * w, 0.5 * h);
+				c.lineTo(0.5 * w, 0.75 * h);
+				c.lineTo(0.75 * w, 0.5 * h);
+				c.moveTo(0.5 * w, 0.75 * h);
+				c.lineTo(0.5 * w, 0.25 * h);
+				c.stroke();
+			break;
+		case 'flowW' :
+				c.begin();
+				c.moveTo(0.5 * w, 0.25 * h);
+				c.lineTo(0.25 * w, 0.5 * h);
+				c.lineTo(0.5 * w, 0.75 * h);
+				c.moveTo(0.25 * w, 0.5 * h);
+				c.lineTo(0.75 * w, 0.5 * h);
+				c.stroke();
+			break;
+		case 'doubleH' :
+				c.begin();
+				c.moveTo(0.6 * w, 0.25 * h);
+				c.lineTo(0.85 * w, 0.5 * h);
+				c.lineTo(0.6 * w, 0.75 * h);
+				c.moveTo(0.4 * w, 0.25 * h);
+				c.lineTo(0.15 * w, 0.5 * h);
+				c.lineTo(0.4 * w, 0.75 * h);
+				c.stroke();
+			break;
+		case 'doubleV' :
+				c.begin();
+				c.moveTo(0.25 * w, 0.6 * h);
+				c.lineTo(0.5 * w, 0.85 * h);
+				c.lineTo(0.75 * w, 0.6 * h);
+				c.moveTo(0.25 * w, 0.4 * h);
+				c.lineTo(0.5 * w, 0.15 * h);
+				c.lineTo(0.75 * w, 0.4 * h);
+				c.stroke();
+			break;
+	}
+};
+
+mxCellRenderer.registerShape(mxShapeSysMLPort.prototype.cst.PORT, mxShapeSysMLPort);
+
+mxShapeSysMLPort.prototype.getConstraints = function(style, w, h)
+{
+	var constr = [];
+
+	constr.push(new mxConnectionConstraint(new mxPoint(0.5, 0), false));
+	constr.push(new mxConnectionConstraint(new mxPoint(0.5, 1), false));
+	constr.push(new mxConnectionConstraint(new mxPoint(0, 0.5), false));
+	constr.push(new mxConnectionConstraint(new mxPoint(1, 0.5), false));
+
+	return (constr);
+};
+

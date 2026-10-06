@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2006-2017, JGraph Ltd
- * Copyright (c) 2006-2017, Gaudenz Alder
+ * Copyright (c) 2006-2017, JGraph Holdings Ltd
+ * Copyright (c) 2006-2017, draw.io AG
  */
 GitLabFile = function(ui, data, meta)
 {
@@ -13,23 +13,36 @@ GitLabFile = function(ui, data, meta)
 mxUtils.extend(GitLabFile, GitHubFile);
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the URL of the file on GitLab.
+ */
+GitLabFile.prototype.getFileUrl = function()
+{
+	return this.meta.html_url;
+};
+
+/**
+ * Returns the URL of the folder of the file on GitLab.
+ */
+GitLabFile.prototype.getFolderUrl = function()
+{
+	var url = this.getFileUrl();
+
+	return url.substring(0, url.lastIndexOf('/'));
+};
+
+/**
+ * Opens the members page of the project on GitLab.
  */
 GitLabFile.prototype.share = function()
 {
 	this.ui.editor.graph.openLink(DRAWIO_GITLAB_URL + '/' +
-		encodeURIComponent(this.meta.org) + '/' +
-		encodeURIComponent(this.meta.repo) +'/-/project_members');
+		this.meta.org + '/' + encodeURIComponent(this.meta.repo) +
+		'/-/project_members');
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the ID of the file, which consists of the organization, the
+ * URI-encoded repository, the ref and the path.
  */
 GitLabFile.prototype.getId = function()
 {
@@ -40,10 +53,8 @@ GitLabFile.prototype.getId = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the hash of the file, which is the URI-encoded A followed by the
+ * ID.
  */
 GitLabFile.prototype.getHash = function()
 {
@@ -51,7 +62,7 @@ GitLabFile.prototype.getHash = function()
 };
 
 /**
- * Adds the listener for automatically saving the diagram for local changes.
+ * Returns true if the given error is a conflict (HTTP 400).
  */
 GitLabFile.prototype.isConflict = function(err)
 {
@@ -59,10 +70,7 @@ GitLabFile.prototype.isConflict = function(err)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns App.MODE_GITLAB.
  */
 GitLabFile.prototype.getMode = function()
 {
@@ -70,7 +78,7 @@ GitLabFile.prototype.getMode = function()
 };
 
 /**
- * Adds all listeners.
+ * Returns the last commit ID from the given descriptor.
  */
 GitLabFile.prototype.getDescriptorEtag = function(desc)
 {
@@ -78,7 +86,7 @@ GitLabFile.prototype.getDescriptorEtag = function(desc)
 };
 
 /**
- * Adds the listener for automatically saving the diagram for local changes.
+ * Sets the last commit ID of the given descriptor.
  */
 GitLabFile.prototype.setDescriptorEtag = function(desc, etag)
 {

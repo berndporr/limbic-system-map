@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
 (function()
 {
 	// Adds ArchiMate 2.1 shapes
@@ -118,7 +122,7 @@
 					w, h, '', 'Triggering', null, this.getTagsForStencil(gn, '', dt + 'triggering').join(' ')),
 			this.createVertexTemplateEntry('swimlane;html=1;fillColor=#ffffff;whiteSpace=wrap', 
 					w, h, '', 'Grouping', null, this.getTagsForStencil(gn, '', dt + 'grouping').join(' ')),
-			this.createVertexTemplateEntry('ellipse;html=1;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;verticalAlign=top;fillColor=#000000', 
+			this.createVertexTemplateEntry('ellipse;html=1;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;verticalAlign=top;fillColor=strokeColor', 
 					10, 10, '', 'Junction', null, this.getTagsForStencil(gn, '', dt + 'junction').join(' ')),
 			this.createEdgeTemplateEntry('endArrow=block;html=1;endFill=0;edgeStyle=elbowEdgeStyle;elbow=vertical',
 					w, h, '', 'Specialization', null, this.getTagsForStencil(gn, '', dt + 'specialization').join(' ')),

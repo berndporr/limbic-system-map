@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
 (function(stylesheet, stencils)
 {
 	// Callbacks:
@@ -32,45 +36,63 @@
 		// ignore
 	}
 
-	var originalNoFo = mxClient.NO_FO;
-	var mathJaxLoading = (typeof(MathJax) !== 'undefined' && typeof(MathJax.Hub) !== 'undefined');
+	var mathJaxLoading = typeof DrawioMathJax !== 'undefined' &&
+		typeof DrawioMathJax.typeset === 'function';
 	var mathJaxQueue = [];
+
+	function renderMath(nodes)
+	{
+		// Synchronous: the bundle contains every component and restarts
+		// without a retry (see etc/mathjax)
+		try
+		{
+			DrawioMathJax.typesetClear(nodes);
+			DrawioMathJax.typeset(nodes);
+		}
+		catch (e)
+		{
+			DrawioMathJax.typesetClear(nodes);
+
+			if (window.console != null)
+			{
+				console.log('Error in MathJax: ' + e.toString());
+			}
+		}
+	};
 	
 	function loadMathJax()
 	{
-		// Uses existing configuration if MathJax already in page
 		if (!mathJaxLoading)
 		{
 			mathJaxLoading = true;
 
-			window.MathJax =
+			// The bundle's own global, as in Editor.initMath, so a MathJax
+			// that the page loads itself is never used or changed
+			window.DrawioMathJax =
 			{
-				skipStartupTypeset: true,
-				showMathMenu: false,
-				messageStyle: 'none',
-				AuthorInit: function ()
+				options:
 				{
-					MathJax.Hub.Config({
-						jax: ['input/TeX', 'input/MathML', 'input/AsciiMath', 'output/SVG'],
-						extensions: ['tex2jax.js', 'mml2jax.js', 'asciimath2jax.js'],
-						TeX: {
-						  extensions: ['AMSmath.js', 'AMSsymbols.js', 'noErrors.js', 'noUndefined.js']
-						}
-					});
-					
-					MathJax.Hub.Register.StartupHook('Begin', function()
+					skipHtmlTags: {'[+]': ['text']}
+				},
+				loader:
+				{
+					load: ['output/svg', 'input/tex', 'input/asciimath',
+						'ui/safe', '[tex]/html']
+				},
+				startup:
+				{
+					pageReady: function()
 					{
-						for (var i = 0; i < mathJaxQueue.length; i++)
-						{
-							MathJax.Hub.Queue(['Typeset', MathJax.Hub, mathJaxQueue[i]]);
-						}
-					});
-			    }
+						renderMath(mathJaxQueue);
+					}
+				}
 			};
 
+			// Single file with everything preloaded and the TeX font as its
+			// default font, as in Editor.initMath
 			var script = document.createElement('script');
 			script.type = 'text/javascript';
-			script.src = 'https://app.diagrams.net/math/MathJax.js';
+			script.src = 'https://app.diagrams.net/math4/es5/drawio-mathjax.min.js';
 			document.getElementsByTagName('head')[0].appendChild(script);
 		}
 	};
@@ -78,23 +100,14 @@
 	function addMathJaxGraph(graph)
 	{
 		// Initial rendering when MathJax finished loading
-		if (typeof(MathJax) !== 'undefined' && typeof(MathJax.Hub) !== 'undefined')
+		if (typeof DrawioMathJax !== 'undefined' && typeof DrawioMathJax.typeset === 'function')
 		{
-			MathJax.Hub.Queue(['Typeset', MathJax.Hub, graph.container]);
+			renderMath([graph.container]);
 		}
 		else
 		{
 			mathJaxQueue.push(graph.container);
 		}
-		
-		// Rendering math again on repaint
-		graph.addListener(mxEvent.SIZE, function(sender, evt)
-		{
-			if (typeof(MathJax) !== 'undefined' && typeof(MathJax.Hub) !== 'undefined')
-			{
-				MathJax.Hub.Queue(['Typeset', MathJax.Hub, graph.container]);
-			}
-		});
 	};
 	
 	// Handles relative images
@@ -150,7 +163,7 @@
 				}
 				
 				var xml = mxUtils.trim(child.innerHTML);
-				container.innerHTML = '';
+				container.innerText = '';
 
 				// Instance needed for decompress helper function
 				var graph = new Graph(container);
@@ -211,7 +224,8 @@
 						{
 							if (name == 'page')
 							{
-								return diagrams[0].getAttribute('name') || 'Page-1';
+								return diagrams[0].getAttribute('name') ||
+									mxResources.get('pageWithNumber', [1], 'Page-1');
 							}
 							else if (name == 'pagenumber')
 							{
@@ -252,7 +266,6 @@
 					
 					if (math == '1')
 					{
-						mxClient.NO_FO = true;
 						loadMathJax();
 					}
 					
@@ -293,24 +306,7 @@
 							
 							graph.doResizeContainer = function(width, height)
 							{
-								// Fixes container size for different box models
-								if (mxClient.IS_IE)
-								{
-									if (document.documentMode >= 9)
-									{
-										width += 3;
-										height += 5;
-									}
-									else
-									{
-										width += 1;
-										height += 1;
-									}
-								}
-								else
-								{
-									height += 1;
-								}
+								height += 1;
 								
 								if (this.maximumContainerSize != null)
 								{
@@ -495,11 +491,6 @@
 						    {
 						    	try
 						    	{
-									if (math == '1')
-									{
-										mxClient.NO_FO = mxClient.IS_SF;
-									}
-						    		
 							    	var data = (xhr.getText != null) ? xhr.getText() : xhr.responseText;
 
 							    	if (data != null)
@@ -556,7 +547,6 @@
 							    			if (diagrams.length > 0)
 							    			{
 												var text = mxUtils.trim(mxUtils.getTextContent(diagrams[0]));
-												var node = null;
 												
 												if (text.length > 0)
 												{
@@ -587,27 +577,25 @@
 							    	}
 							    	else
 							    	{
-							    		graph.container.innerHTML = 'Cannot load ' + mxUtils.htmlEntities(url);
+							    		graph.container.innerText = 'Cannot load ' + url;
 							    	}
-							    	
-							    	mxClient.NO_FO = originalNoFo;
 						    	}
 								catch (e)
 								{
-									graph.container.innerHTML = 'Cannot load ' + mxUtils.htmlEntities(url) + ': ' + mxUtils.htmlEntities(e.message);
+									graph.container.innerText = 'Cannot load ' + url + ': ' + e.message;
 								}
 						    });
 						    
 						    xhr.onerror = function()
 						    {
-						    	graph.container.innerHTML = 'Cannot load ' + mxUtils.htmlEntities(url);
+						    	graph.container.innerText = 'Cannot load ' + url;
 						    };
 						
 						    xhr.send();
 						}
 						catch (e)
 						{
-							graph.container.innerHTML = 'Cannot load ' + mxUtils.htmlEntities(url) + ': ' + mxUtils.htmlEntities(e.message);
+							graph.container.innerText = 'Cannot load ' + url + ': ' + e.message;
 						}
 					}
 					else
@@ -757,7 +745,7 @@
 						});
 						
 						// Do not use HTML entity to avoid problems with XHTML
-						button.innerHTML = '...';
+						button.innerText = '...';
 					}
 					
 					function show()
@@ -810,8 +798,6 @@
 					console.log('Error:', err);
 				}
 			}
-			
-			mxClient.NO_FO = originalNoFo;
 			
 			return graph;
 		};

@@ -1,2 +1,931 @@
-if(!self.define){const e=e=>{"require"!==e&&(e+=".js");let i=Promise.resolve();return r[e]||(i=new Promise((async i=>{if("document"in self){const r=document.createElement("script");r.src=e,document.head.appendChild(r),r.onload=i}else importScripts(e),i()}))),i.then((()=>{if(!r[e])throw new Error(`Module ${e} didn’t register its module`);return r[e]}))},i=(i,r)=>{Promise.all(i.map(e)).then((e=>r(1===e.length?e[0]:e)))},r={require:Promise.resolve(i)};self.define=(i,a,c)=>{r[i]||(r[i]=Promise.resolve().then((()=>{let r={};const s={uri:location.origin+i.slice(1)};return Promise.all(a.map((i=>{switch(i){case"exports":return r;case"module":return s;default:return e(i)}}))).then((e=>{const i=c(...e);return r.default||(r.default=i),r}))})))}}define("./service-worker.js",["./workbox-f163abaa"],(function(e){"use strict";self.addEventListener("message",(e=>{e.data&&"SKIP_WAITING"===e.data.type&&self.skipWaiting()})),e.precacheAndRoute([{url:"js/app.min.js",revision:"1eb29b2a59fe2b21cfd6ef70db3b1eaa"},{url:"js/extensions.min.js",revision:"63cd63b173d18730929fb832c396e2ce"},{url:"js/stencils.min.js",revision:"4e7448cd52e7be7804236973ff1c37b0"},{url:"js/shapes-14-6-5.min.js",revision:"2a45abd06dfe78e69135e9f87f9b78d3"},{url:"js/math-print.js",revision:"9d98c920695f6c3395da4b68f723e60a"},{url:"index.html",revision:"6d4fee0a8111a8faf43063d25ceea2dc"},{url:"open.html",revision:"d71816b3b00e769fc6019fcdd6921662"},{url:"styles/grapheditor.css",revision:"b83ab40a56fdf706d7e633e7c30db289"},{url:"styles/atlas.css",revision:"e8152cda9233d3a3af017422993abfce"},{url:"styles/dark.css",revision:"87d5d01385c5d0f0c4c4f5d0f3532826"},{url:"js/croppie/croppie.min.css",revision:"fc297c9002c79c15a132f13ee3ec427e"},{url:"js/dropbox/Dropbox-sdk.min.js",revision:"4b9842892aa37b156db0a8364b7a83b0"},{url:"js/onedrive/OneDrive.js",revision:"d82b9c14d7a069efabef719a8a5f3975"},{url:"js/viewer-static.min.js",revision:"2449fdde074e6c91bc064a217d28f560"},{url:"connect/jira/editor-1-3-3.html",revision:"fb7e91ab8890425d55f0122a01cc5b20"},{url:"connect/jira/viewerPanel-1-3-12.html",revision:"9020fb8d69a51d0162b8dfd938315259"},{url:"connect/jira/fullScreenViewer-1-3-3.html",revision:"c58a7c55a335f49d84bc4b1aac9885aa"},{url:"connect/jira/viewerPanel.js",revision:"32763e62c3a7498a8ee479fee8a55bb7"},{url:"connect/jira/spinner.gif",revision:"7d857ab9d86123e93d74d48e958fe743"},{url:"connect/jira/editor.js",revision:"435d01373a459c134b05b6640c88c327"},{url:"connect/jira/fullscreen-viewer-init.js",revision:"197ed5837ed27992688fc424699a9a78"},{url:"connect/jira/fullscreen-viewer.js",revision:"bd97b40b9dc692b1b696b188263799ff"},{url:"plugins/connectJira.js",revision:"4cefa13414e0d406550f3c073923080c"},{url:"plugins/cConf-comments.js",revision:"c787357209cff2986dcca567b599e2ef"},{url:"plugins/cConf-1-4-8.js",revision:"159835ebab73810cc3f4fea9d904fab6"},{url:"connect/confluence/connectUtils-1-4-8.js",revision:"e88b96bfc81ee9278c804f67b5f96b04"},{url:"connect/new_common/cac.js",revision:"b1eb16ac1824f26824c748e8b8028e30"},{url:"connect/gdrive_common/gac.js",revision:"06a30c8936357c186240e9a18a1cd34c"},{url:"connect/onedrive_common/ac.js",revision:"994c3113d437180945c51e63e6a9b106"},{url:"connect/confluence/viewer-init.js",revision:"4a60c6c805cab7bc782f1e52f7818d9f"},{url:"connect/confluence/viewer.js",revision:"8527f67e207375c0654e19df4cb977cc"},{url:"connect/confluence/viewer-1-4-42.html",revision:"c154ee66bab65cd0e476c1d64c64cb8d"},{url:"connect/confluence/macroEditor-1-4-8.html",revision:"689fa63fd3a384662b4199f6e4a5b5c1"},{url:"connect/confluence/includeDiagram-1-4-8.js",revision:"259248f0077c6506703d5b4ecaff36dc"},{url:"connect/confluence/includeDiagram.html",revision:"9f0658477ece6384b7fb75eb769e54bc"},{url:"connect/confluence/macro-editor.js",revision:"9b1c5395a3c3ee9b7d41873f37fc7875"},{url:"math/MathJax.js",revision:"b2c103388b71bb3d11cbf9aa45fe9b68"},{url:"math/config/TeX-MML-AM_SVG-full.js",revision:"d5cb8ac04050983170ae4af145bc66ff"},{url:"math/jax/output/SVG/fonts/TeX/fontdata.js",revision:"495e5a410955d1b6178870e605890ede"},{url:"math/jax/element/mml/optable/BasicLatin.js",revision:"cac9b2e71382e62270baa55fab07cc13"},{url:"math/jax/output/SVG/fonts/TeX/Size2/Regular/Main.js",revision:"e3e5e4d5924beed29f0844550b5c8f46"},{url:"math/jax/output/SVG/fonts/TeX/Main/Regular/LetterlikeSymbols.js",revision:"0767cbad7275b53da128e7e5e1109f7c"},{url:"math/jax/output/SVG/fonts/TeX/Main/Regular/GreekAndCoptic.js",revision:"346302a5c5ee00e01c302148c56dbfe3"},{url:"resources/dia.txt",revision:"de246c361e16f1912e18183e3a4920f2"},{url:"resources/dia_am.txt",revision:"319cda81e8094a9c7c5c71a575412878"},{url:"resources/dia_ar.txt",revision:"51b81c0e5be37b236fbad205bd705e28"},{url:"resources/dia_bg.txt",revision:"3fcebf558a853aa5525df756d14c911e"},{url:"resources/dia_bn.txt",revision:"112e4e442c4c5e106f56f20916df0991"},{url:"resources/dia_bs.txt",revision:"9aadd9262e43328c24c39e10fb9e07b8"},{url:"resources/dia_ca.txt",revision:"8e27654b5bccb25fd64bd5ca25dd457d"},{url:"resources/dia_cs.txt",revision:"ff23418a1fc72c3dc823c8a36ef045cb"},{url:"resources/dia_da.txt",revision:"2d595423e7cae28aa40c5fb446f6c607"},{url:"resources/dia_de.txt",revision:"67811638a22c88cadbeb70888ee70c97"},{url:"resources/dia_el.txt",revision:"b7874896dc88731e1a4539e2692e25eb"},{url:"resources/dia_eo.txt",revision:"ad3e60c28997ac53d81668657c270658"},{url:"resources/dia_es.txt",revision:"ebe9a0534b72b4a8056ec9789916877b"},{url:"resources/dia_et.txt",revision:"b5deb9abd85d94ac3e46277417f35759"},{url:"resources/dia_eu.txt",revision:"dbb688e823a11c189d1e303208367ee4"},{url:"resources/dia_fa.txt",revision:"3b20a335c50dbe4a47ea8af0128d0073"},{url:"resources/dia_fi.txt",revision:"806b7c2722ba3cacd4cd3c2df50628a6"},{url:"resources/dia_fil.txt",revision:"afa78012fb16c8047e6bb3b125e7e3f8"},{url:"resources/dia_fr.txt",revision:"2fcf905f2477fe678174f59fc4566386"},{url:"resources/dia_gl.txt",revision:"40c344f29c0c7549293726ea2a32e43e"},{url:"resources/dia_gu.txt",revision:"3455765ac051d47f0d6cef77e6275021"},{url:"resources/dia_he.txt",revision:"c4ca85c6f25ef6988c368c604c577571"},{url:"resources/dia_hi.txt",revision:"40daf9d70cafafcccad4bdb2c87f45ea"},{url:"resources/dia_hr.txt",revision:"3d5d2e46e04888fe98a675e7fff45b8c"},{url:"resources/dia_hu.txt",revision:"6675468a6d69212cc91ca93868040757"},{url:"resources/dia_id.txt",revision:"5f205ce5f703ac8ea5a698bd56c51f93"},{url:"resources/dia_it.txt",revision:"e81fb84f34d06de17610143daa6a3429"},{url:"resources/dia_ja.txt",revision:"ea686c92f9d42f908a4488a9d5814a1f"},{url:"resources/dia_kn.txt",revision:"78d66867fb8ffd7003f73bbd62334bb8"},{url:"resources/dia_ko.txt",revision:"6362bcb7a531ba3bde5e52d61b4336f8"},{url:"resources/dia_lt.txt",revision:"1b55f2713d7492ff703016ce0d90058b"},{url:"resources/dia_lv.txt",revision:"b79c9f33c8192f4b30926705706095ed"},{url:"resources/dia_ml.txt",revision:"ed7251d27f886385f1e5245fb58a1675"},{url:"resources/dia_mr.txt",revision:"811a4568743ea874ee2f72337c76b6cb"},{url:"resources/dia_ms.txt",revision:"1f4491f409b4863abf97682f1a141c18"},{url:"resources/dia_my.txt",revision:"de246c361e16f1912e18183e3a4920f2"},{url:"resources/dia_nl.txt",revision:"a74e5a89ad9b7aa6cdd18ed906376b11"},{url:"resources/dia_no.txt",revision:"9e4f174a779f84547eab04845b10959c"},{url:"resources/dia_pl.txt",revision:"892b36582564c1c5f0a58900ef06c0ff"},{url:"resources/dia_pt-br.txt",revision:"f259a247d5bc5ff41b12350311d2a1ba"},{url:"resources/dia_pt.txt",revision:"0d587498ac46c75f71ad3344e671efd4"},{url:"resources/dia_ro.txt",revision:"e4061120e72f2ce7cd2e42b0d804e2ef"},{url:"resources/dia_ru.txt",revision:"4eda1973968106bf8b8d2ddb6146b265"},{url:"resources/dia_si.txt",revision:"de246c361e16f1912e18183e3a4920f2"},{url:"resources/dia_sk.txt",revision:"23fe3b51393d6215ce1d1cec197013cf"},{url:"resources/dia_sl.txt",revision:"06ef097b79b01e95d63229ca54d6121b"},{url:"resources/dia_sr.txt",revision:"a9b05944d2b1dc81b45dbf81ccbe43dc"},{url:"resources/dia_sv.txt",revision:"23cc1ef6bdd68e8ffa7a22be808dcfcb"},{url:"resources/dia_sw.txt",revision:"a10933a009fabc446dd1a73b7b3ee5d6"},{url:"resources/dia_ta.txt",revision:"161437618c5c5178ff4f37cf7a41cc43"},{url:"resources/dia_te.txt",revision:"7348773221051ac18ad4d7bc10a1b7f6"},{url:"resources/dia_th.txt",revision:"d8fbd10e5331b2fb11401ebdd3c0a09b"},{url:"resources/dia_tr.txt",revision:"6e5deb8e8e688794155ed347ce31128f"},{url:"resources/dia_uk.txt",revision:"8d6dad2deb405bc51eda95a24e25a07c"},{url:"resources/dia_vi.txt",revision:"4a1991dcd8eb6a5fbe29f340a3be529e"},{url:"resources/dia_zh-tw.txt",revision:"33a98fb737c582518c6c1a762b715f45"},{url:"resources/dia_zh.txt",revision:"df7266a624e3a967e9bcd09c94dfbba3"},{url:"favicon.ico",revision:"fab2d88b37c72d83607527573de45281"},{url:"images/manifest.json",revision:"c6236bde53ed79aaaec60a1aca8ee2ef"},{url:"images/logo.png",revision:"89630b64b911ebe0daa3dfe442087cfa"},{url:"images/drawlogo.svg",revision:"4bf4d14ebcf072d8bd4c5a1c89e88fc6"},{url:"images/drawlogo48.png",revision:"8b13428373aca67b895364d025f42417"},{url:"images/drawlogo-gray.svg",revision:"0aabacbc0873816e1e09e4736ae44c7d"},{url:"images/drawlogo-text-bottom.svg",revision:"f6c438823ab31f290940bd4feb8dd9c2"},{url:"images/logo-flat-small.png",revision:"4b178e59ff499d6dd1894fc498b59877"},{url:"images/apple-touch-icon.png",revision:"73da7989a23ce9a4be565ec65658a239"},{url:"images/favicon-16x16.png",revision:"1a79d5461a5d2bf21f6652e0ac20d6e5"},{url:"images/favicon-32x32.png",revision:"e3b92da2febe70bad5372f6f3474b034"},{url:"images/android-chrome-196x196.png",revision:"38b32aefe5d1456144ae00d2c67aab46"},{url:"images/android-chrome-512x512.png",revision:"959b5fac2453963ff6d60fb85e4b73fd"},{url:"images/delete.png",revision:"5f2350f2fd20f1a229637aed32ed8f29"},{url:"images/droptarget.png",revision:"bbf7f563fb6784de1ce96f329519b043"},{url:"images/help.png",revision:"9266c6c3915bd33c243d80037d37bf61"},{url:"images/download.png",revision:"35418dd7bd48d87502c71b578cc6c37f"},{url:"images/logo-flat.png",revision:"038070ab43aee6e54a791211859fc67b"},{url:"images/google-drive-logo.svg",revision:"5d9f2f5bbc7dcc252730a0072bb23059"},{url:"images/onedrive-logo.svg",revision:"3645b344ec0634c1290dd58d7dc87b97"},{url:"images/dropbox-logo.svg",revision:"e6be408c77cf9c82d41ac64fa854280a"},{url:"images/github-logo.svg",revision:"a1a999b69a275eac0cb918360ac05ae1"},{url:"images/gitlab-logo.svg",revision:"0faea8c818899e58533e153c44b10517"},{url:"images/trello-logo.svg",revision:"006fd0d7d70d7e95dc691674cb12e044"},{url:"images/osa_drive-harddisk.png",revision:"b954e1ae772087c5b4c6ae797e1f9649"},{url:"images/osa_database.png",revision:"c350d9d9b95f37b6cfe798b40ede5fb0"},{url:"images/google-drive-logo-white.svg",revision:"f329d8b1be7778515a85b93fc35d9f26"},{url:"images/dropbox-logo-white.svg",revision:"4ea8299ac3bc31a16f199ee3aec223bf"},{url:"images/onedrive-logo-white.svg",revision:"b3602fa0fc947009cff3f33a581cff4d"},{url:"images/github-logo-white.svg",revision:"537b1127b3ca0f95b45782d1304fb77a"},{url:"images/gitlab-logo-white.svg",revision:"5fede9ac2f394c716b8c23e3fddc3910"},{url:"images/trello-logo-white-orange.svg",revision:"e2a0a52ba3766682f138138d10a75eb5"},{url:"images/logo-confluence.png",revision:"ed1e55d44ae5eba8f999aba2c93e8331"},{url:"images/logo-jira.png",revision:"f8d460555a0d1f87cfd901e940666629"},{url:"images/clear.gif",revision:"db13c778e4382e0b55258d0f811d5d70"},{url:"images/spin.gif",revision:"487cbb40b9ced439aa1ad914e816d773"},{url:"images/checkmark.gif",revision:"ba764ce62f2bf952df5bbc2bb4d381c5"},{url:"images/hs.png",revision:"fefa1a03d92ebad25c88dca94a0b63db"},{url:"images/aui-wait.gif",revision:"5a474bcbd8d2f2826f03d10ea44bf60e"},{url:"mxgraph/css/common.css",revision:"b5b7280ec98671bb6c3847a36bc7ea12"},{url:"mxgraph/images/expanded.gif",revision:"2b67c2c035af1e9a5cc814f0d22074cf"},{url:"mxgraph/images/collapsed.gif",revision:"73cc826da002a3d740ca4ce6ec5c1f4a"},{url:"mxgraph/images/maximize.gif",revision:"5cd13d6925493ab51e876694cc1c2ec2"},{url:"mxgraph/images/minimize.gif",revision:"8957741b9b0f86af9438775f2aadbb54"},{url:"mxgraph/images/close.gif",revision:"8b84669812ac7382984fca35de8da48b"},{url:"mxgraph/images/resize.gif",revision:"a6477612b3567a34033f9cac6184eed3"},{url:"mxgraph/images/separator.gif",revision:"7819742ff106c97da7a801c2372bbbe5"},{url:"mxgraph/images/window.gif",revision:"fd9a21dd4181f98052a202a0a01f18ab"},{url:"mxgraph/images/window-title.gif",revision:"3fb1d6c43246cdf991a11dfe826dfe99"},{url:"mxgraph/images/button.gif",revision:"00759bdc3ad218fa739f584369541809"},{url:"mxgraph/images/point.gif",revision:"83a43717b284902442620f61bc4e9fa6"}],{ignoreURLParametersMatching:[/.*/]})}));
-//# sourceMappingURL=service-worker.js.map
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ *
+ * draw.io precache service worker. Generated by GenerateServiceWorker.java
+ * from a workbox-config*.js file - do not edit by hand. Reproduces the Workbox
+ * 7.2.0 generateSW precaching behaviour without the Workbox runtime: the same
+ * cache name and __WB_REVISION__ cache keys (so an existing Workbox-populated
+ * cache is adopted in place and only changed files are re-fetched), cache-first
+ * fetch with all query parameters ignored, directoryIndex/cleanURLs URL
+ * variations, stale-entry cleanup on activate and skipWaiting. LAZY_MANIFEST
+ * entries (language files) use the same keys but are cached on first use
+ * instead of at install time; installs refresh the lazy entries the client
+ * already has, and offline misses fall back to a stale revision and then to
+ * the precached LAZY_FALLBACK. Revisions are
+ * the file's MD5; .html entries append the release version so documents are
+ * re-fetched once per release (a cached response pins the HTTP headers it was
+ * fetched with, e.g. the CSP, which a header-only change never invalidates).
+ * Cache keys resolve against the registration scope, network fetches against
+ * the script's own directory: registered as stable/service-worker.js with
+ * scope '/', this worker fetches via /stable/ and serves unprefixed.
+ */
+'use strict';
+self.skipWaiting();
+
+var MANIFEST = [
+  {"url":"js/bootstrap.js","revision":"d8ff725e43b7b0f27feb01a2b2242226"},
+  {"url":"js/main.js","revision":"a8d40469d3d72ab4b11059362f3dd825"},
+  {"url":"js/app.min.js","revision":"8cf62f99b11624c32d9cf0ccbc24fee8"},
+  {"url":"js/extensions.min.js","revision":"8ea7239cd1baab7c84ea736f4f9cd466"},
+  {"url":"js/plantuml/drawio-plantuml.min.js","revision":"2bb5c7783a7662f8e939d7a5437d5f5d"},
+  {"url":"js/orgchart.min.js","revision":"619d8c4dab47b81868916df31f55478b"},
+  {"url":"js/stencils.min.js","revision":"ed29a54cd418b1888595b2d10c53a1b5"},
+  {"url":"js/shapes-14-6-5.min.js","revision":"da44ce5390d63d69f81737f31805cb82"},
+  {"url":"js/math-print.js","revision":"6e1ff765ea66d2447c04b269cbefbb97"},
+  {"url":"index.html","revision":"37d99867f01777601ef92aa76c1590aa-32.2.0"},
+  {"url":"open.html","revision":"d71816b3b00e769fc6019fcdd6921662-32.2.0"},
+  {"url":"shortcuts.svg","revision":"e6e8b6ca4cdf380eb5908925fadda599"},
+  {"url":"styles/fonts/ArchitectsDaughter-Regular.ttf","revision":"31c2153c0530e32553b31a49b3d70736"},
+  {"url":"styles/grapheditor.css","revision":"645fa2a6f6c6d1a4040957e697887176"},
+  {"url":"styles/high-contrast.css","revision":"0c0219b1016c8bd6bbf859cfd53b5058"},
+  {"url":"js/dropbox/Dropbox-sdk.min.js","revision":"4b9842892aa37b156db0a8364b7a83b0"},
+  {"url":"js/onedrive/OneDrive.js","revision":"e863f5e6833892f22492211663e3efe9"},
+  {"url":"js/viewer-static.min.js","revision":"762b9ed44c9da407957198109ac407c5"},
+  {"url":"connect/jira/editor-1-3-3.html","revision":"41dc8af9576b47f359cff19fff7a41c2-32.2.0"},
+  {"url":"connect/jira/viewerPanel-1-3-12.html","revision":"4836f5e4308abe57830e441518364f23-32.2.0"},
+  {"url":"connect/jira/viewerPanel2.html","revision":"0dd1ee1343a46b5c03aedbc587450b84-32.2.0"},
+  {"url":"connect/jira/fullScreenViewer-1-3-3.html","revision":"abed474e47c0c41a5ad2366b4828f77a-32.2.0"},
+  {"url":"connect/jira/viewerPanel.js","revision":"85011efa68d638da560871ee2ab3a6fe"},
+  {"url":"connect/jira/spinner.gif","revision":"7d857ab9d86123e93d74d48e958fe743"},
+  {"url":"connect/jira/editor.js","revision":"6264f470f244aec4b62035bbad03eb5e"},
+  {"url":"connect/jira/fullscreen-viewer-init.js","revision":"07043c1ee868dd425f7876da94bbc307"},
+  {"url":"connect/jira/fullscreen-viewer.js","revision":"a6be96b8ddc5a25196925713cf34d571"},
+  {"url":"plugins/connectJira.js","revision":"d220cad2edf0d6b161505fe12ae3eaa6"},
+  {"url":"plugins/cConf-comments.js","revision":"faaee24081d7b0fb9af0add3171feaac"},
+  {"url":"plugins/cConf-1-4-8.js","revision":"c38ede4830fecae08feebe164eab6472"},
+  {"url":"connect/confluence/connectUtils-1-4-8.js","revision":"cfbf5d0f3ee4a36e7b14de12d98c1d90"},
+  {"url":"connect/new_common/cac.js","revision":"cb67d9063901b90c656da15548ca80af"},
+  {"url":"connect/gdrive_common/gac.js","revision":"c66fdc50ec87002a502cb0779b73a692"},
+  {"url":"connect/onedrive_common/ac.js","revision":"1264ba8705eff0d1337701e5ae962366"},
+  {"url":"connect/confluence/viewer-init.js","revision":"c5e51e32ac74414d8d518af83ee2781f"},
+  {"url":"connect/confluence/viewer.js","revision":"092c424361f3c34559cafeafd64407a6"},
+  {"url":"connect/confluence/viewer-1-4-42.html","revision":"69c1bca25fd4889bf832e8441c972268-32.2.0"},
+  {"url":"connect/confluence/macroEditor-1-4-8.html","revision":"4ad77ae3f08c19eddac932b2fa8c7068-32.2.0"},
+  {"url":"connect/confluence/includeDiagram-1-4-8.js","revision":"00257060eaa6d81f38ac543795f6d0c8"},
+  {"url":"connect/confluence/includeDiagram.html","revision":"ea43646d9f24ac0b96171f1ab3fa9f00-32.2.0"},
+  {"url":"connect/confluence/macro-editor.js","revision":"b9000d6c20f30e4068f83bd0b56965ca"},
+  {"url":"math4/es5/drawio-mathjax.min.js","revision":"a6ac5a84944a345c72b79df99146d038"},
+  {"url":"resources/dia.txt","revision":"19abaebe809931e6a8e740ad01b3b7e7"},
+  {"url":"favicon.ico","revision":"b2bf17349e4b50ce4ba311f079f8bf7d"},
+  {"url":"images/manifest.json","revision":"840dccdf2df72f46a63fb3b32ab6100e"},
+  {"url":"images/logo.png","revision":"e4e0d092abdb1e668b5ec41a7fe0713c"},
+  {"url":"images/drawlogo.svg","revision":"4bf4d14ebcf072d8bd4c5a1c89e88fc6"},
+  {"url":"images/drawlogo48.png","revision":"8b13428373aca67b895364d025f42417"},
+  {"url":"images/drawlogo-gray.svg","revision":"0aabacbc0873816e1e09e4736ae44c7d"},
+  {"url":"images/drawlogo-text-bottom.svg","revision":"f6c438823ab31f290940bd4feb8dd9c2"},
+  {"url":"images/logo-flat-small.png","revision":"4b178e59ff499d6dd1894fc498b59877"},
+  {"url":"images/apple-touch-icon.png","revision":"732c29e21332a926318a7005d21ec450"},
+  {"url":"images/icon-192-maskable.png","revision":"47e006d0ce4a35eb5beaa97f0c2bfed0"},
+  {"url":"images/icon-192.png","revision":"d022403d52435d76afec82c4e24a17ef"},
+  {"url":"images/icon-512-maskable.png","revision":"cf152feeb01fb21f3148a71a3540266e"},
+  {"url":"images/icon-512.png","revision":"a3a0df7e7a385244b74073f81ecc45de"},
+  {"url":"images/delete.png","revision":"5f2350f2fd20f1a229637aed32ed8f29"},
+  {"url":"images/droptarget.png","revision":"bbf7f563fb6784de1ce96f329519b043"},
+  {"url":"images/logo-flat.png","revision":"038070ab43aee6e54a791211859fc67b"},
+  {"url":"images/google-drive-logo.svg","revision":"5d9f2f5bbc7dcc252730a0072bb23059"},
+  {"url":"images/onedrive-logo.svg","revision":"3645b344ec0634c1290dd58d7dc87b97"},
+  {"url":"images/dropbox-logo.svg","revision":"e6be408c77cf9c82d41ac64fa854280a"},
+  {"url":"images/github-logo.svg","revision":"a1a999b69a275eac0cb918360ac05ae1"},
+  {"url":"images/gitlab-logo.svg","revision":"0faea8c818899e58533e153c44b10517"},
+  {"url":"images/trello-logo.svg","revision":"006fd0d7d70d7e95dc691674cb12e044"},
+  {"url":"images/osa_drive-harddisk.png","revision":"b954e1ae772087c5b4c6ae797e1f9649"},
+  {"url":"images/osa_database.png","revision":"c350d9d9b95f37b6cfe798b40ede5fb0"},
+  {"url":"images/google-drive-logo-white.svg","revision":"f329d8b1be7778515a85b93fc35d9f26"},
+  {"url":"images/dropbox-logo-white.svg","revision":"4ea8299ac3bc31a16f199ee3aec223bf"},
+  {"url":"images/onedrive-logo-white.svg","revision":"b3602fa0fc947009cff3f33a581cff4d"},
+  {"url":"images/github-logo-white.svg","revision":"537b1127b3ca0f95b45782d1304fb77a"},
+  {"url":"images/gitlab-logo-white.svg","revision":"5fede9ac2f394c716b8c23e3fddc3910"},
+  {"url":"images/trello-logo-white-orange.svg","revision":"e2a0a52ba3766682f138138d10a75eb5"},
+  {"url":"images/logo-confluence.png","revision":"ed1e55d44ae5eba8f999aba2c93e8331"},
+  {"url":"images/logo-jira.png","revision":"f8d460555a0d1f87cfd901e940666629"},
+  {"url":"images/spin.gif","revision":"487cbb40b9ced439aa1ad914e816d773"},
+  {"url":"images/aui-wait.gif","revision":"5a474bcbd8d2f2826f03d10ea44bf60e"},
+  {"url":"mxgraph/css/common.css","revision":"8d895dc8387694c128232b13e631be39"}
+];
+
+// Entries cached on first use instead of at install time (language files:
+// one request per client instead of the full set). Revisions and cache keys
+// are derived exactly like MANIFEST entries, so entries that move between
+// the two lists keep their cached bytes.
+var LAZY_MANIFEST = [
+  {"url":"resources/dia_am.txt","revision":"4383e3b16ac0c80dcfe09f21def7dac3"},
+  {"url":"resources/dia_ar.txt","revision":"843bcd0b9e0f62967e2b55bd2f0d3731"},
+  {"url":"resources/dia_bg.txt","revision":"55226b59b55340110f9d2e38590ef9a4"},
+  {"url":"resources/dia_bn.txt","revision":"a2287e08f34245a3e6dcca45de82994b"},
+  {"url":"resources/dia_bs.txt","revision":"fadd5630d2e4127ef5f6afe670be77ba"},
+  {"url":"resources/dia_ca.txt","revision":"ede111785c2ad474bccaab0e4922984e"},
+  {"url":"resources/dia_cs.txt","revision":"d0bc3ce61ab836eb1830c07f070c0233"},
+  {"url":"resources/dia_da.txt","revision":"7111387a9b355c94f60ba8bb6d5fb479"},
+  {"url":"resources/dia_de.txt","revision":"68afd9065b429ca2e72ec29e3b78f9bf"},
+  {"url":"resources/dia_el.txt","revision":"c1b96a55cdf330903463640ecba623d0"},
+  {"url":"resources/dia_eo.txt","revision":"b77ce940c07e9a0661303918ace1d318"},
+  {"url":"resources/dia_es.txt","revision":"ca67efe3d5d563cca53303848da4a069"},
+  {"url":"resources/dia_et.txt","revision":"4036099098fff97d2a49cb80da0d88de"},
+  {"url":"resources/dia_eu.txt","revision":"1a2d908b927298675c53650ff8ea2f78"},
+  {"url":"resources/dia_fa.txt","revision":"6326b2a47b7a3370525fc0c3f54fec2c"},
+  {"url":"resources/dia_fi.txt","revision":"ce6b29c2fe8b2b631f20cddc32ea37d9"},
+  {"url":"resources/dia_fil.txt","revision":"4510f3c8248e3a6af6a4fa2fed7f2233"},
+  {"url":"resources/dia_fr.txt","revision":"8310c1fdd6ef8330e44001c66fc9bd06"},
+  {"url":"resources/dia_gl.txt","revision":"42d6903ad8793080060a830ffff17dc3"},
+  {"url":"resources/dia_gu.txt","revision":"aa7f43b4d462f5e00b64f98689645eb6"},
+  {"url":"resources/dia_he.txt","revision":"9b444f22900c72249bac4b779cbaf594"},
+  {"url":"resources/dia_hi.txt","revision":"9cda363916db08ce4ca9f64d9b86f79a"},
+  {"url":"resources/dia_hr.txt","revision":"41fa93a9a091fcc98f53f43c04adb9ea"},
+  {"url":"resources/dia_hu.txt","revision":"259a9d1975e4a1e39fb8375a9c2cfeb9"},
+  {"url":"resources/dia_i18n.txt","revision":"3314a2b2b5e1e9140796840717fd9992"},
+  {"url":"resources/dia_id.txt","revision":"738f0bc0fb52499d10d16f3c531e00a4"},
+  {"url":"resources/dia_it.txt","revision":"03769af3432dfa09cf4c0a3f5d4a2d92"},
+  {"url":"resources/dia_ja.txt","revision":"9e2a0445b88a0926f9704d4a7e642d62"},
+  {"url":"resources/dia_kl.txt","revision":"ba61dc905013829a477473427773c8eb"},
+  {"url":"resources/dia_kn.txt","revision":"a557d4c129c0c12682a230758b59c6c2"},
+  {"url":"resources/dia_ko.txt","revision":"fd397c4ab51f87d8f25fa1b98f5e57ed"},
+  {"url":"resources/dia_lt.txt","revision":"997185dc976e5cee1891c9a698c1f7a7"},
+  {"url":"resources/dia_lv.txt","revision":"ea1a7f2549477dafe7eea5f4b7e9aa3b"},
+  {"url":"resources/dia_ml.txt","revision":"d77619e3f73e8aa3586039749f5ea15e"},
+  {"url":"resources/dia_mr.txt","revision":"f6993d1e66e620be14bef564eb9bae44"},
+  {"url":"resources/dia_ms.txt","revision":"293103201298ae135c47e89e137e4d3e"},
+  {"url":"resources/dia_my.txt","revision":"5f19afde549271d13ab2e90c8c8a0262"},
+  {"url":"resources/dia_nl.txt","revision":"c6b4ea53b6e7bed2fba08a68738eb7a1"},
+  {"url":"resources/dia_no.txt","revision":"b45a88fd9070794e802bc2406d88e714"},
+  {"url":"resources/dia_pl.txt","revision":"2d6772a68951899a7166389f3d51a7ad"},
+  {"url":"resources/dia_pt.txt","revision":"3a60ee597ff41c7175fed0587fa3ade6"},
+  {"url":"resources/dia_pt-br.txt","revision":"4c07971032e93bf9af8ffe8aa99f51e4"},
+  {"url":"resources/dia_ro.txt","revision":"4f7b1841316499137ed74a0310bac8bc"},
+  {"url":"resources/dia_ru.txt","revision":"ec528ea8ad9b6250ff27acd1bc2e3dfa"},
+  {"url":"resources/dia_si.txt","revision":"5d1d891e81ec814e17af956229c20909"},
+  {"url":"resources/dia_sk.txt","revision":"24989b9e07b8459ea61ffd8bd092d990"},
+  {"url":"resources/dia_sl.txt","revision":"b0c4a9d4007dc6076b9947f3423f74e9"},
+  {"url":"resources/dia_sr.txt","revision":"2e62a9e841cf04c6a4db4824209405eb"},
+  {"url":"resources/dia_sv.txt","revision":"af7a1b5c46a3c6ed73a6f6f3a90be17a"},
+  {"url":"resources/dia_sw.txt","revision":"9f98dc8639775f55de33c7507620801c"},
+  {"url":"resources/dia_ta.txt","revision":"327433741515d1cd812576ee1c3bb508"},
+  {"url":"resources/dia_te.txt","revision":"605830b7ae5d9367a2bb7ff106f97d83"},
+  {"url":"resources/dia_th.txt","revision":"6c723786e53a9936b74de72653898242"},
+  {"url":"resources/dia_tr.txt","revision":"77c249c3f775042d2476cfeb298e8a6b"},
+  {"url":"resources/dia_uk.txt","revision":"58f18e8185249ae40605dca3b9472b8e"},
+  {"url":"resources/dia_vi.txt","revision":"cdba1d41286375a8d75848c51a1a16ed"},
+  {"url":"resources/dia_zh.txt","revision":"0fbd96d2e01b5da6c091945063fde7ef"},
+  {"url":"resources/dia_zh-tw.txt","revision":"05fde7befb2ff38598042d712ce7c3af"}
+];
+
+// Precached URL served when a lazy entry is requested offline before it was
+// ever cached (the English resources) - null disables the fallback.
+var LAZY_FALLBACK = "resources/dia.txt";
+
+// Dev-mode sources (?dev=1): network-first so edits are always fresh while
+// online, with the cached copy (no revision) answering an offline reload.
+// Cached only when a dev page actually requests them - production pages
+// load the precached bundles instead and never touch these.
+var DEV_MANIFEST = [
+  "js/PreConfig.js",
+  "js/PostConfig.js",
+  "mxgraph/mxClient.js",
+  "styles/default.xml",
+  "js/grapheditor/Actions.js",
+  "js/grapheditor/Dialogs.js",
+  "js/grapheditor/Editor.js",
+  "js/grapheditor/EditorUi.js",
+  "js/grapheditor/Format.js",
+  "js/grapheditor/Graph.js",
+  "js/grapheditor/Init.js",
+  "js/grapheditor/InlineToolbar.js",
+  "js/grapheditor/Menus.js",
+  "js/grapheditor/Shapes.js",
+  "js/grapheditor/Sidebar.js",
+  "js/grapheditor/Toolbar.js",
+  "js/diagramly/App.js",
+  "js/diagramly/ConfigEditor.js",
+  "js/diagramly/DevTools.js",
+  "js/diagramly/Devel.js",
+  "js/diagramly/Dialogs.js",
+  "js/diagramly/DiffSync.js",
+  "js/diagramly/DrawioClient.js",
+  "js/diagramly/DrawioComment.js",
+  "js/diagramly/DrawioFile.js",
+  "js/diagramly/DrawioFilePolling.js",
+  "js/diagramly/DrawioFileSync.js",
+  "js/diagramly/DrawioUser.js",
+  "js/diagramly/DriveClient.js",
+  "js/diagramly/DriveComment.js",
+  "js/diagramly/DriveFile.js",
+  "js/diagramly/DriveLibrary.js",
+  "js/diagramly/DropboxClient.js",
+  "js/diagramly/DropboxFile.js",
+  "js/diagramly/DropboxLibrary.js",
+  "js/diagramly/Editor.js",
+  "js/diagramly/EditorUi.js",
+  "js/diagramly/ElkLayout.js",
+  "js/diagramly/Embed.js",
+  "js/diagramly/EmbedFile.js",
+  "js/diagramly/Extensions.js",
+  "js/diagramly/GitHubClient.js",
+  "js/diagramly/GitHubFile.js",
+  "js/diagramly/GitHubLibrary.js",
+  "js/diagramly/GitLabClient.js",
+  "js/diagramly/GitLabFile.js",
+  "js/diagramly/GitLabLibrary.js",
+  "js/diagramly/GraphViewer.js",
+  "js/diagramly/HomeDialog.js",
+  "js/diagramly/Init.js",
+  "js/diagramly/LibavoidRouting.js",
+  "js/diagramly/LocalFile.js",
+  "js/diagramly/LocalLibrary.js",
+  "js/diagramly/Menus.js",
+  "js/diagramly/Minimal.js",
+  "js/diagramly/OneDriveClient.js",
+  "js/diagramly/OneDriveFile.js",
+  "js/diagramly/OneDriveLibrary.js",
+  "js/diagramly/P2PCollab.js",
+  "js/diagramly/Pages.js",
+  "js/diagramly/RemoteFile.js",
+  "js/diagramly/RemoteLibrary.js",
+  "js/diagramly/Settings.js",
+  "js/diagramly/Simple.js",
+  "js/diagramly/StorageFile.js",
+  "js/diagramly/StorageLibrary.js",
+  "js/diagramly/Trees.js",
+  "js/diagramly/TrelloClient.js",
+  "js/diagramly/TrelloFile.js",
+  "js/diagramly/TrelloLibrary.js",
+  "js/diagramly/UrlLibrary.js",
+  "js/diagramly/mxFreehand.js",
+  "js/diagramly/mxRuler.js",
+  "js/diagramly/sidebar/Sidebar-AWS.js",
+  "js/diagramly/sidebar/Sidebar-AWS3.js",
+  "js/diagramly/sidebar/Sidebar-AWS3D.js",
+  "js/diagramly/sidebar/Sidebar-AWS4.js",
+  "js/diagramly/sidebar/Sidebar-AWS4b.js",
+  "js/diagramly/sidebar/Sidebar-ActiveDirectory.js",
+  "js/diagramly/sidebar/Sidebar-Advanced.js",
+  "js/diagramly/sidebar/Sidebar-AlibabaCloud.js",
+  "js/diagramly/sidebar/Sidebar-AlliedTelesis.js",
+  "js/diagramly/sidebar/Sidebar-Android.js",
+  "js/diagramly/sidebar/Sidebar-ArchiMate.js",
+  "js/diagramly/sidebar/Sidebar-ArchiMate3.js",
+  "js/diagramly/sidebar/Sidebar-ArchiMate4.js",
+  "js/diagramly/sidebar/Sidebar-Arrows2.js",
+  "js/diagramly/sidebar/Sidebar-Atlassian.js",
+  "js/diagramly/sidebar/Sidebar-Atlassian2.js",
+  "js/diagramly/sidebar/Sidebar-Azure.js",
+  "js/diagramly/sidebar/Sidebar-Azure2.js",
+  "js/diagramly/sidebar/Sidebar-BPMN.js",
+  "js/diagramly/sidebar/Sidebar-Basic.js",
+  "js/diagramly/sidebar/Sidebar-Bootstrap.js",
+  "js/diagramly/sidebar/Sidebar-C4.js",
+  "js/diagramly/sidebar/Sidebar-Cabinet.js",
+  "js/diagramly/sidebar/Sidebar-Cisco.js",
+  "js/diagramly/sidebar/Sidebar-Cisco19.js",
+  "js/diagramly/sidebar/Sidebar-CiscoSafe.js",
+  "js/diagramly/sidebar/Sidebar-Citrix.js",
+  "js/diagramly/sidebar/Sidebar-Citrix2.js",
+  "js/diagramly/sidebar/Sidebar-Cumulus.js",
+  "js/diagramly/sidebar/Sidebar-DFD.js",
+  "js/diagramly/sidebar/Sidebar-Dynamics365.js",
+  "js/diagramly/sidebar/Sidebar-EIP.js",
+  "js/diagramly/sidebar/Sidebar-ER.js",
+  "js/diagramly/sidebar/Sidebar-Electrical.js",
+  "js/diagramly/sidebar/Sidebar-Floorplan.js",
+  "js/diagramly/sidebar/Sidebar-Flowchart.js",
+  "js/diagramly/sidebar/Sidebar-FluidPower.js",
+  "js/diagramly/sidebar/Sidebar-GCP.js",
+  "js/diagramly/sidebar/Sidebar-GCP2.js",
+  "js/diagramly/sidebar/Sidebar-GCP3.js",
+  "js/diagramly/sidebar/Sidebar-GCPIcons.js",
+  "js/diagramly/sidebar/Sidebar-Gmdl.js",
+  "js/diagramly/sidebar/Sidebar-IBM.js",
+  "js/diagramly/sidebar/Sidebar-IBMCloud.js",
+  "js/diagramly/sidebar/Sidebar-Infographic.js",
+  "js/diagramly/sidebar/Sidebar-Ios.js",
+  "js/diagramly/sidebar/Sidebar-Ios7.js",
+  "js/diagramly/sidebar/Sidebar-Kubernetes.js",
+  "js/diagramly/sidebar/Sidebar-LeanMapping.js",
+  "js/diagramly/sidebar/Sidebar-MSCAE.js",
+  "js/diagramly/sidebar/Sidebar-Mockup.js",
+  "js/diagramly/sidebar/Sidebar-Network.js",
+  "js/diagramly/sidebar/Sidebar-Network2.js",
+  "js/diagramly/sidebar/Sidebar-Office.js",
+  "js/diagramly/sidebar/Sidebar-OpenStack.js",
+  "js/diagramly/sidebar/Sidebar-PID.js",
+  "js/diagramly/sidebar/Sidebar-Rack.js",
+  "js/diagramly/sidebar/Sidebar-SAP.js",
+  "js/diagramly/sidebar/Sidebar-Salesforce.js",
+  "js/diagramly/sidebar/Sidebar-Signs.js",
+  "js/diagramly/sidebar/Sidebar-Sitemap.js",
+  "js/diagramly/sidebar/Sidebar-Sysml.js",
+  "js/diagramly/sidebar/Sidebar-ThreatModeling.js",
+  "js/diagramly/sidebar/Sidebar-UML25.js",
+  "js/diagramly/sidebar/Sidebar-VVD.js",
+  "js/diagramly/sidebar/Sidebar-Veeam.js",
+  "js/diagramly/sidebar/Sidebar-Veeam2.js",
+  "js/diagramly/sidebar/Sidebar-WebIcons.js",
+  "js/diagramly/sidebar/Sidebar.js",
+  "js/diagramly/util/mxAsyncCanvas.js",
+  "js/diagramly/util/mxJsCanvas.js",
+  "js/diagramly/vsdx/VsdxExport.js",
+  "js/diagramly/vsdx/bmpDecoder.js",
+  "js/diagramly/vsdx/importer.js",
+  "js/diagramly/vsdx/mxVsdxCanvas2D.js",
+  "js/diagramly/emf/emf-svg.js",
+  "js/diagramly/gif/AnimatedExport.js",
+  "js/diagramly/gif/AnimationExport.js",
+  "js/diagramly/gif/GifEncoder.js",
+  "js/diagramly/gif/Mp4Encoder.js",
+  "js/diagramly/graphml/mxGraphMlCodec.js",
+  "js/diagramly/miro/MiroImporter.js",
+  "js/cryptojs/aes.min.js",
+  "js/deflate/base64.js",
+  "js/deflate/pako.min.js",
+  "js/elk/drawio-elk.min.js",
+  "js/freehand/perfect-freehand.js",
+  "js/gliffy/drawio-gliffy.min.js",
+  "js/jszip/jszip.min.js",
+  "js/libavoid-js/libavoid-routing.js",
+  "js/libavoid-js/libavoid.min.js",
+  "js/mermaid/drawio-mermaid.min.js",
+  "js/onedrive/OneDrive.js",
+  "js/onedrive/OneDriveOrig.js",
+  "js/onedrive/mxODPicker.js",
+  "js/onedrive/mxODPickerV2.js",
+  "js/orgchart/OrgChart.Layout.min.js",
+  "js/orgchart/bridge.collections.min.js",
+  "js/orgchart/bridge.min.js",
+  "js/orgchart/mxOrgChartLayout.js",
+  "js/plantuml/drawio-plantuml.min.js",
+  "js/rough/rough.min.js",
+  "js/sanitizer/purify.min.js",
+  "js/spin/spin.min.js"
+];
+
+// ignoreURLParametersMatching:[/.*/] - strip every query parameter on lookup.
+var IGNORE_ALL_PARAMS = true;
+
+// Workbox cache name: ['workbox', 'precache-v2', registration.scope].join('-').
+var CACHE_NAME = ['workbox', 'precache-v2', self.registration.scope]
+  .filter(function(v) { return v && v.length > 0; }).join('-');
+
+// Cache keys and request matching resolve against the registration scope (the
+// URLs the page requests); network fetches resolve against the script's own
+// directory. Identical for root-registered workers - existing caches are
+// adopted unchanged - but a registration like
+// register('stable/service-worker.js', {scope: '/'}) fetches every entry via
+// its /stable/ prefix while serving it for the unprefixed URL.
+var SCOPE_BASE = self.registration.scope;
+var FETCH_BASE = new URL('./', self.location.href).href;
+var PREFIXED = FETCH_BASE !== SCOPE_BASE;
+
+function swCacheKey(entry)
+{
+  var u = new URL(entry.url, SCOPE_BASE);
+
+  if (entry.revision)
+  {
+    u.searchParams.set('__WB_REVISION__', entry.revision);
+  }
+
+  return u.href;
+}
+
+// Maps each precached URL (no revision) to its cache key (with revision), and
+// each cache key to the URL it is fetched from (differs when PREFIXED).
+var urlsToCacheKeys = new Map();
+var cacheKeysToNetworkUrls = new Map();
+
+MANIFEST.forEach(function(e)
+{
+  var key = swCacheKey(e);
+  urlsToCacheKeys.set(new URL(e.url, SCOPE_BASE).href, key);
+  cacheKeysToNetworkUrls.set(key, new URL(e.url, FETCH_BASE).href);
+});
+
+// Lazy entries share the network-URL map so a channel-prefixed worker
+// fills them via its own FETCH_BASE, never the other channel's URL.
+var lazyUrlsToCacheKeys = new Map();
+
+LAZY_MANIFEST.forEach(function(e)
+{
+  var key = swCacheKey(e);
+  lazyUrlsToCacheKeys.set(new URL(e.url, SCOPE_BASE).href, key);
+  cacheKeysToNetworkUrls.set(key, new URL(e.url, FETCH_BASE).href);
+});
+
+// Dev entries are keyed by their plain URL (network-first needs no
+// revision - the network is the source of truth while online).
+var devUrls = new Map();
+
+DEV_MANIFEST.forEach(function(u)
+{
+  var key = new URL(u, SCOPE_BASE).href;
+  devUrls.set(key, key);
+  cacheKeysToNetworkUrls.set(key, new URL(u, FETCH_BASE).href);
+});
+
+// Mirrors Workbox generateURLVariations (exact, query-stripped, directoryIndex,
+// cleanURLs) so a request for '/' resolves to the precached 'index.html'.
+function* urlVariations(url)
+{
+  var u = new URL(url, SCOPE_BASE);
+  u.hash = '';
+  yield u.href;
+
+  var noParams = new URL(u.href);
+
+  if (IGNORE_ALL_PARAMS)
+  {
+    noParams.search = '';
+  }
+
+  yield noParams.href;
+
+  if (noParams.pathname.endsWith('/'))
+  {
+    var dir = new URL(noParams.href);
+    dir.pathname += 'index.html';
+    yield dir.href;
+  }
+
+  var clean = new URL(noParams.href);
+  clean.pathname += '.html';
+  yield clean.href;
+}
+
+function matchIn(map, url)
+{
+  for (var variation of urlVariations(url))
+  {
+    if (map.has(variation))
+    {
+      return map.get(variation);
+    }
+  }
+
+  return undefined;
+}
+
+function matchPrecache(url)
+{
+  return matchIn(urlsToCacheKeys, url);
+}
+
+function matchLazy(url)
+{
+  return matchIn(lazyUrlsToCacheKeys, url);
+}
+
+function matchDev(url)
+{
+  return matchIn(devUrls, url);
+}
+
+// The URL of a cache key without its __WB_REVISION__ parameter - identifies
+// other (stale) revisions of the same lazy entry in the cache.
+function baseUrl(url)
+{
+  var u = new URL(url);
+  u.searchParams.delete('__WB_REVISION__');
+  return u.href;
+}
+
+// A redirected response cannot be served for a navigation; copy it clean.
+function copyRedirected(response)
+{
+  return response.blob().then(function(body)
+  {
+    return new Response(body, {
+      headers: response.headers,
+      status: response.status,
+      statusText: response.statusText
+    });
+  });
+}
+
+// Caches a fetched lazy entry under its revisioned key, then drops other
+// revisions of the same URL (kept until now as offline fallback).
+function putLazy(cache, key, response)
+{
+  var prepared = response.redirected ?
+    copyRedirected(response) : Promise.resolve(response);
+
+  return prepared.then(function(res)
+  {
+    return cache.put(key, res);
+  }).then(function()
+  {
+    return cache.keys(new Request(baseUrl(key)), {ignoreSearch: true});
+  }).then(function(requests)
+  {
+    return Promise.all(requests.filter(function(r)
+    {
+      return r.url != key;
+    }).map(function(r)
+    {
+      return cache.delete(r);
+    }));
+  });
+}
+
+// Fetches a lazy entry (via FETCH_BASE when prefixed) and caches it.
+// Rejects on errors and on HTML bodies for non-document entries - the same
+// cache-poisoning guard as the precache install.
+function fetchLazy(cache, key)
+{
+  var req = new Request(cacheKeysToNetworkUrls.get(key),
+    {cache: 'reload', credentials: 'same-origin'});
+
+  return fetch(req).then(function(response)
+  {
+    if (!response || response.status >= 400)
+    {
+      throw new Error('bad-lazy-response: ' + key);
+    }
+
+    var type = response.headers.get('Content-Type') || '';
+    var pathname = new URL(baseUrl(key)).pathname;
+
+    if (type.indexOf('text/html') >= 0 && !pathname.endsWith('.html') &&
+      !pathname.endsWith('.htm'))
+    {
+      throw new Error('bad-lazy-response: ' + key);
+    }
+
+    return putLazy(cache, key, response.clone()).then(function()
+    {
+      return response;
+    });
+  });
+}
+
+self.addEventListener('install', function(event)
+{
+  event.waitUntil(caches.open(CACHE_NAME).then(function(cache)
+  {
+    return cache.keys().then(function(existing)
+    {
+      var have = new Set(existing.map(function(r) { return r.url; }));
+      var haveBases = new Set(existing.map(function(r)
+      {
+        return baseUrl(r.url);
+      }));
+
+      // Lazy entries are not downloaded at install, but entries the client
+      // already uses (cached under an older revision) are refreshed so an
+      // update keeps them current. Failures are tolerated and must never
+      // fail the atomic install - the stale revision remains in place as
+      // fallback until the next successful online use.
+      var lazy = LAZY_MANIFEST.map(function(entry)
+      {
+        var key = swCacheKey(entry);
+
+        if (have.has(key) || !haveBases.has(baseUrl(key)))
+        {
+          return Promise.resolve();
+        }
+
+        return fetchLazy(cache, key).then(null, function() { return null; });
+      });
+
+      return Promise.all(MANIFEST.map(function(entry)
+      {
+        var key = swCacheKey(entry);
+
+        // Same revision already cached (unchanged file) - keep it, no re-fetch.
+        if (have.has(key))
+        {
+          return Promise.resolve();
+        }
+
+        var req = new Request(new URL(entry.url, FETCH_BASE).href,
+          {cache: 'reload', credentials: 'same-origin'});
+
+        return fetch(req).then(function(response)
+        {
+          if (!response || response.status >= 400)
+          {
+            throw new Error('bad-precaching-response: ' + entry.url);
+          }
+
+          // An HTML body for a non-document entry is an error page with a
+          // 200 status: caching it would poison the shell until the next
+          // release, so fail the (atomic) install instead.
+          var type = response.headers.get('Content-Type') || '';
+          var pathname = new URL(entry.url, SCOPE_BASE).pathname;
+
+          if (type.indexOf('text/html') >= 0 && !pathname.endsWith('.html') &&
+            !pathname.endsWith('.htm'))
+          {
+            throw new Error('bad-precaching-response: ' + entry.url);
+          }
+
+          var prepared = response.redirected ?
+            copyRedirected(response) : Promise.resolve(response);
+
+          return prepared.then(function(res) { return cache.put(key, res); });
+        });
+      }).concat(lazy));
+    });
+  }));
+});
+
+self.addEventListener('activate', function(event)
+{
+  var valid = new Set();
+  urlsToCacheKeys.forEach(function(key) { valid.add(key); });
+  lazyUrlsToCacheKeys.forEach(function(key) { valid.add(key); });
+  devUrls.forEach(function(key) { valid.add(key); });
+
+  event.waitUntil(caches.open(CACHE_NAME).then(function(cache)
+  {
+    return cache.keys().then(function(keys)
+    {
+      var present = new Set(keys.map(function(r) { return r.url; }));
+
+      return Promise.all(keys.map(function(request)
+      {
+        // Drop entries whose revision changed or that left the manifest.
+        if (!valid.has(request.url))
+        {
+          // A stale revision of a lazy entry survives until its
+          // replacement is cached - it is the offline fallback while the
+          // install-time refresh has not succeeded.
+          var current = lazyUrlsToCacheKeys.get(baseUrl(request.url));
+
+          if (current == null || present.has(current))
+          {
+            return cache.delete(request);
+          }
+        }
+
+        return Promise.resolve(false);
+      }));
+    });
+  }));
+});
+
+function respondPrecache(event, key)
+{
+  return caches.open(CACHE_NAME).then(function(cache)
+  {
+    return cache.match(key).then(function(cached)
+    {
+      if (cached)
+      {
+        return cached;
+      }
+
+      // Cache miss on a precached URL: a prefixed worker must refill from its
+      // own fetch base, never from the unprefixed (other-channel) URL.
+      if (!PREFIXED)
+      {
+        return fetch(event.request);
+      }
+
+      return fetch(cacheKeysToNetworkUrls.get(key)).then(function(res)
+      {
+        if (res != null && res.ok)
+        {
+          return res;
+        }
+
+        // The pinned route no longer serves this file: a skewed beta copy
+        // beats a broken page, and a deterministic 404 also drops the
+        // registration so the next start re-registers a coherent channel.
+        if (res != null && res.status == 404)
+        {
+          self.registration.unregister();
+        }
+
+        return fetch(event.request);
+      }, function()
+      {
+        return fetch(event.request);
+      });
+    });
+  });
+}
+
+// Cache-first on the current revision, then network (filling the cache),
+// then a stale prior revision, then the precached LAZY_FALLBACK. A missing
+// lazy entry must never break a working app, so unlike the precache refill
+// path this never unregisters on 404.
+function respondLazy(event, key)
+{
+  return caches.open(CACHE_NAME).then(function(cache)
+  {
+    return cache.match(key).then(function(cached)
+    {
+      if (cached)
+      {
+        return cached;
+      }
+
+      return fetchLazy(cache, key).then(null, function()
+      {
+        return cache.match(new Request(baseUrl(key)),
+          {ignoreSearch: true}).then(function(stale)
+        {
+          if (stale)
+          {
+            return stale;
+          }
+
+          var fb = (LAZY_FALLBACK != null) ? urlsToCacheKeys.get(
+            new URL(LAZY_FALLBACK, SCOPE_BASE).href) : null;
+
+          if (fb == null)
+          {
+            return fetch(event.request);
+          }
+
+          return cache.match(fb).then(function(fallback)
+          {
+            return (fallback != null) ? fallback : fetch(event.request);
+          });
+        });
+      });
+    });
+  });
+}
+
+// Fetches a dev entry (no-cache: revalidate, never trust the HTTP cache)
+// and stores it under its plain URL. Resolves with the response, or null
+// on errors and on HTML bodies for non-document entries (poisoning guard).
+function fetchDev(cache, key)
+{
+  var req = new Request(cacheKeysToNetworkUrls.get(key),
+    {cache: 'no-cache', credentials: 'same-origin'});
+
+  return fetch(req).then(function(response)
+  {
+    if (response == null || !response.ok)
+    {
+      return null;
+    }
+
+    var type = response.headers.get('Content-Type') || '';
+    var pathname = new URL(key).pathname;
+
+    if (type.indexOf('text/html') >= 0 && !pathname.endsWith('.html') &&
+      !pathname.endsWith('.htm'))
+    {
+      return null;
+    }
+
+    var copy = response.clone();
+
+    return (copy.redirected ? copyRedirected(copy) :
+      Promise.resolve(copy)).then(function(res)
+    {
+      return cache.put(key, res);
+    }).then(function()
+    {
+      return response;
+    });
+  });
+}
+
+// Network-first for dev sources: the network is the source of truth while
+// online (edited sources are never stale), the cached copy answers when
+// the network fails (offline dev reload). Error responses are surfaced.
+function respondDev(event, key)
+{
+  return caches.open(CACHE_NAME).then(function(cache)
+  {
+    return fetchDev(cache, key).then(function(response)
+    {
+      if (response != null)
+      {
+        return response;
+      }
+
+      return cache.match(key).then(function(cached)
+      {
+        return (cached != null) ? cached :
+          fetch(cacheKeysToNetworkUrls.get(key));
+      });
+    }, function(err)
+    {
+      return cache.match(key).then(function(cached)
+      {
+        if (cached != null)
+        {
+          return cached;
+        }
+
+        throw err;
+      });
+    });
+  });
+}
+
+// Fills the dev entries missing from the cache. An offline dev reload
+// needs the complete source set - cache-on-use alone leaves every file
+// the session did not (finish) loading as a hole.
+function warmDevEntries(cache)
+{
+  return Promise.all(DEV_MANIFEST.map(function(u)
+  {
+    var key = new URL(u, SCOPE_BASE).href;
+
+    return cache.match(key).then(function(cached)
+    {
+      return (cached != null) ? null :
+        fetchDev(cache, key).then(null, function() { return null; });
+    });
+  }));
+}
+
+self.addEventListener('fetch', function(event)
+{
+  if (event.request.method !== 'GET')
+  {
+    return;
+  }
+
+  var key = matchPrecache(event.request.url);
+
+  if (key)
+  {
+    event.respondWith(respondPrecache(event, key));
+    return;
+  }
+
+  var lazyKey = matchLazy(event.request.url);
+
+  if (lazyKey)
+  {
+    event.respondWith(respondLazy(event, lazyKey));
+    return;
+  }
+
+  var devKey = matchDev(event.request.url);
+
+  // Not precached - fall back to the network (browser default handling).
+  if (!devKey)
+  {
+    return;
+  }
+
+  event.respondWith(respondDev(event, devKey));
+});
+
+// Warms cache entries for a page. warmLazy caches one lazy entry - the
+// current UI language right after the first install, whose own request was
+// not yet routed through this worker, or a language installed in the
+// offline languages dialog, which may run in a page this worker does not
+// control. A port transferred with warmLazy is notified when the entry is
+// done (cached or failed). warmDev fills all missing dev entries so one
+// online dev load yields a complete offline source set. Only URLs in the
+// respective manifests are ever fetched and cached.
+self.addEventListener('message', function(event)
+{
+  var data = event.data;
+  var port = (event.ports != null && event.ports.length > 0) ?
+    event.ports[0] : null;
+
+  // The sender re-reads the cache for the outcome
+  function reply()
+  {
+    if (port != null)
+    {
+      port.postMessage(true);
+    }
+  }
+
+  if (data != null && data.warmDev == true)
+  {
+    event.waitUntil(caches.open(CACHE_NAME).then(function(cache)
+    {
+      return warmDevEntries(cache);
+    }));
+  }
+
+  if (data != null && typeof data.warmLazy == 'string')
+  {
+    var key = null;
+
+    try
+    {
+      key = matchLazy(new URL(data.warmLazy, SCOPE_BASE).href);
+    }
+    catch (e)
+    {
+      // ignore
+    }
+
+    if (key != null)
+    {
+      event.waitUntil(caches.open(CACHE_NAME).then(function(cache)
+      {
+        return cache.match(key).then(function(cached)
+        {
+          return (cached != null) ? null :
+            fetchLazy(cache, key).then(null, function() { return null; });
+        });
+      }).then(reply, reply));
+    }
+    else
+    {
+      reply();
+    }
+  }
+});

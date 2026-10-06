@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
 (function()
 {
 	// Adds containers
@@ -12,77 +16,98 @@
 		// Avoids having to bind all functions to "this"
 		var sb = this;
 
-		// Reusable cells
-		var flow = new mxCell('Vertical Flow Layout', new mxGeometry(0, 0, 270, 280),
-				'swimlane;html=1;startSize=20;horizontal=1;childLayout=flowLayout;flowOrientation=north;resizable=0;interRankCellSpacing=50;containerType=tree;');
-		flow.vertex = true;
-		
-		var flow1 = new mxCell('Start', new mxGeometry(20, 20, 100, 40), 'whiteSpace=wrap;html=1;');
-		flow1.vertex = true;
-		flow.insert(flow1);
-		
-		var flow2 = new mxCell('Task', new mxGeometry(20, 20, 100, 40), 'whiteSpace=wrap;html=1;');
-		flow2.vertex = true;
-		flow.insert(flow2);
-		
-		var edge = new mxCell('', new mxGeometry(0, 0, 0, 0), 'html=1;curved=1;');
-		edge.geometry.relative = true;
-		edge.edge = true;
-		flow1.insertEdge(edge, true);
-		flow2.insertEdge(edge, false);
-		flow.insert(edge);
-		
-		var flow3 = new mxCell('Task', new mxGeometry(20, 20, 100, 40), 'whiteSpace=wrap;html=1;');
-		flow3.vertex = true;
-		flow.insert(flow3);
-		
-		edge = edge.clone();
-		flow1.insertEdge(edge, true);
-		flow3.insertEdge(edge, false);
-		flow.insert(edge);
-		
-		var flow4 = new mxCell('End', new mxGeometry(20, 20, 100, 40), 'whiteSpace=wrap;html=1;');
-		flow4.vertex = true;
-		flow.insert(flow4);
-		
-		edge = edge.clone();
-		flow2.insertEdge(edge, true);
-		flow4.insertEdge(edge, false);
-		flow.insert(edge);
-		
-		edge = edge.clone();
-		flow3.insertEdge(edge, true);
-		flow4.insertEdge(edge, false);
-		flow.insert(edge);
+		// Live layout containers — configs shared with Insert > Layout via
+		// Menus.layoutContainers (the sidebar uses the titled transparent
+		// swimlane variant, sidebarStyle). The seed cells are authored at
+		// the positions the ELK layout computes: the layout can't run for
+		// the thumbnail, and dropping the template then converges without
+		// moving anything (the run anchors at the content's top-left, so
+		// only the relative positions must match the ELK output).
+		// nodes = [label, x, y]; edges = index pairs.
+		var layoutEdgeStyle = Menus.layoutContainerEdgeStyle +
+			'edgeStyle=orthogonalEdgeStyle;';
+
+		var createLayoutContainer = function(name, title, nodes, edges)
+		{
+			var def = Menus.layoutContainers[name];
+
+			// transparentBounds swimlane: the stored geometry stays pinned at
+			// (0,0,0,0) — the visible box is derived from the children plus
+			// groupPadding and the title bar (see Graph.getTransparentBounds).
+			// The label names the container, not its layout: a layout run
+			// with the container selected replaces the live layout (see
+			// EditorUi.applyLayoutToSelectedContainers), so a layout-specific
+			// title would go stale.
+			var container = new mxCell('Layout Container',
+				new mxGeometry(0, 0, 0, 0), def.sidebarStyle);
+			container.vertex = true;
+
+			var vertices = [];
+
+			for (var i = 0; i < nodes.length; i++)
+			{
+				var v = new mxCell(nodes[i][0], new mxGeometry(nodes[i][1],
+					nodes[i][2], 100, 40), 'whiteSpace=wrap;html=1;');
+				v.vertex = true;
+				vertices.push(container.insert(v));
+			}
+
+			for (var i = 0; i < edges.length; i++)
+			{
+				var e = new mxCell('', new mxGeometry(), layoutEdgeStyle);
+				e.geometry.relative = true;
+				e.edge = true;
+				vertices[edges[i][0]].insertEdge(e, true);
+				vertices[edges[i][1]].insertEdge(e, false);
+				container.insert(e);
+			}
+
+			return container;
+		};
+
+		var addLayoutContainerEntry = function(tags, title, name, nodes, edges)
+		{
+			return sb.addEntry(tags, function()
+			{
+				var def = Menus.layoutContainers[name];
+				var container = createLayoutContainer(name, title, nodes, edges);
+
+				return sb.createVertexTemplateFromCells([container],
+					def.width, def.height, title, true);
+			});
+		};
 
 		fns = fns.concat(
 		[
 			this.addDataEntry('container swimlane pool horizontal', 480, 380, 'Horizontal Pool 1',
-				'zZRLbsIwEIZP4709TlHXhJYNSEicwCIjbNWJkWNKwumZxA6IlrRUaisWlmb+eX8LM5mXzdyrnV66Ai2TL0zm3rkQrbLJ0VoG3BRMzhgAp8fgdSQq+ijfKY9VuKcAYsG7snuMyso5G8U6tDaJ9cGUVlXkTXUoacuZIHOjjS0WqnX7blYd1OZt8KYea3PE1bCI+CAtVUMq7/o5b46uCmroSn18WFMm+XCdse5GpLq0OPqAzejxvZQun6MrMfiWUg6mCDpmZM8RENdotjqVyUFUdRS259oLSzISztto5Se0i44gcHEn3i9A/IQB3GbQpmi69DskAn4BSTaGBB4Jicj+k8nTGBP5SExg8odMyL38eH3s6kM8AQ=='),
+				'zZRBbsMgEEVPwx4Gt+o6bptNIkXKCVA8CqhgIiCNndMXG2iUNk6rqq2ysMT8+Z/xvAWE16abO7GTS9ugJvyJ8NpZG9LJdDVqTYCqhvBHAkDjR+B5osvGLt0Jh234TgBS4FXoPSZlZa1Oog+9zqI/KKNFG6vZRirdLERv98MAH8TmpVQzh14dcVWmsw/SUnRRpVGV1qmjbYPQ2RbvcWEdnbGGc8d6GFFywZRE/nF0AbvJ5Ucpbz5HazC4PloOqgkyOaqHBIhKVFuZY7yIwidh+549sYyHjPMyWv4J7WIgCJRdw3sFxA8ZwGUGfe7mTb9CwuAXkFRTSOCWkLDqP5ncTTHht8QE7v+QSSxPL97YO3sQ3wA='),
 			this.addDataEntry('container swimlane pool horizontal', 480, 360, 'Horizontal Pool 2',
-				'zZTBbsIwDIafJvfU6dDOlI0LSEg8QUQtEi1tUBJGy9PPbcJQWTsxaZs4VLJ//07sT1WYKKpm6eRBrW2JhokXJgpnbYhR1RRoDAOuSyYWDIDTx+B1opr1VX6QDutwTwPEhndpjhiVjbUmij60Jon+pCsja8rmKlQ05SKjcKe0KVeytcfuLh/k7u2SzR16fcbNZZDsRlrLhlTenWedPts6SJMEOseFLTkph6Fj212RbGlwdAGbyeV7KW2+RFthcC1ZTroMKjry5wiIK9R7ldrELInSR2H/2XtlSUHCOY5WfEG76ggCz+7E+w2InzCAcQapIf0fAySzESQZ/AKSfAoJPCKS9mbzf0H0NIVIPDAiyP8QEaXX97CvDZ7LDw=='),
+				'zZRRb8IgEMc/De/06MyerZsvmpj4CYi9CBkUA6itn360UE1da5ZlW3wg4f53f477hUBYoeul5QexNiUqwt4IK6wxPu50XaBSBKgsCVsQABoWgfeJbNZl6YFbrPx3DBANJ66OGJWNMSqKzjcqie4steJViOY7IVW54o05tg2c57uPPppbdPKCm757dieteR1UGlRhrLyYynOVhHCO9dtQGWIYVmzbFr3Pa5UOThdH67GeHL6T0uRLNBq9bULJWZZexIr8NQKiAuVeJBubJZG7KOyv3hvLsEk4x9GyL2hXLUGg2SO8D0D8kAGMM0iG9D4GSGYjSDL4BST5FBJ4RiTN3eT/guhlChF7YkSQ/yGiEN7+wy43+C4/AQ=='),
 			this.addDataEntry('container swimlane pool horizontal', 360, 480, 'Vertical Pool 1',
-				'xZRBbsIwEEVP4709ThFrQssGJKSewCIjbNXGyDEl4fSdxKa0NJFQVTULSzP/e+T5b2EmS9esgjrqja/QMvnMZBm8j6lyTYnWMuCmYnLJADgdBi8jruhdflQBD/GRAUgD78qeMClb720S69jaLNZn46w6ULfQ0dGWS0HlThtbrVXrT91bdVS7t2u3CFibC26vi4g7aaMaUjmpNBbiKxnUQyfkjTBEbEZT9VKOtELvMIaWrpxNFXW6IWcpOddo9jqPFfMsqjoJ+8/ZGyQqMqdhZvIHs3WHBrh4kNvvIsNw5Da7OdgXAgKGCMz+gEAxRgCmINDcxZ2CyNMYETkhESj+jwi1t1+r9759ah8='),
+				'xZTRbsIgFIafhsstcKC11zrnjSYmewJiT4SMiqE42z39aMGZabss2bJekHD+n//A+S4gfFE1KyePamNLNIQvCV84a33cVc0CjSFAdUn4EwGgYRF4HnFZ79KjdHjwPwlADLxJc8KobK01Uax9a5JYn3Vl5CFU853SplzL1p66C2ovd6+Xau6w1u+4vdzObqSNbIJKgxpizr8EI9TQCcpXJiXSi9B5bEan6qU00gpthd614UgKiMdMzMSMZ7QocpELhg+MxyZnXXoVT/E8sqEK9V6lxqJIoqyjsP/sfsUYNonkMFV+R3XdwQPKviP7aygwDKVNLr0jwGCIQP4HBMQYAZiCQHMz7hREsjEifEIiIP6PSCiv/1rvffn2PgA='),
 			this.addDataEntry('container swimlane pool vertical', 380, 480, 'Vertical Pool 2',
-				'xZTPbsIwDMafJvf86dDOlI0LSEg8QUQtEi1pUBJGy9PPbdJ1G1TqhXGoZH/219g/RSGitM3ay5PaugoMEW9ElN65mCLblGAM4VRXRKwI5xQ/wt8nqqyv0pP0UMc5Bp4Mn9KcISk750wSQ2xNFsNFWyNrzJYqWpxyxTA8KG2qjWzduTsrRHn4GLKlh6CvsBsGYX+krWxQpaiizcc9FjDnnaCc11dXR2lyxyjsuyPy3/Lg4CM0k8v3Ut58Dc5C9C22XHQVVeoQrwkQVaCPKtuKQZQhCcdv78gSg4zzPlpxg3bTEeSUzcR7Q2bWyvz+ytmQr8NPAow/ikAxRYA/kQAr/hPByxQC8cxLsHggAkzH56uv/XrdvgA='),
-			this.addDataEntry('vertical tree layout', 280, 190, 'Vertical Tree Layout',
-				'5ZXNUoMwEICfhjuQWvVaqL3oxXa8p7ADmQmECUspfXo3JNgirdMZ7UE9MGT/s182E49FxX6leZW/qBSkx5Yei7RSaFfFPgIpvdAXqcdiLwx9+rzw6YI16K1+xTWUeE1AaAN2XDZgNW+gUSTcOG00AP2eeacatI41dtI51q0oJC9JWuRY0M7jgJY1co1rcTBOVJtsSouDKpEPHkkuZOpyshipxiCc+PalWWwSaKjFgW/lICfGQZSgN10FLgOpXSO0e9hfhNGrHIkVqAJQd+TSihRzB+TBAvNzEFk+hD06Ja+tIvuIPbKlhcN7HjWboH41x/wZa5sLhHXFEyO3NBhjvle1GZ5v0wW4kfC7sXgCIfDPQJj9AIPZhEFkpoFUwf8CcTcBMekf0gzWTgS5Ve3yqFj0CjLshts6YqNVU6aQugtjM5t0X3Oi6qrRCYzGla5zBnhyelOaGiRHsRtn/w6c+cUpmVL601Ny/xunZH6bKSHx+Cz2ttGr+Q4='),
-			this.addDataEntry('horizontal tree layout', 310, 160, 'Horizontal Tree Layout',
-				'5ZXNUoMwEMefJncgtd4LVQ96sX2BtOxAZgJhwlJKn94NSQWkdTqjHtQDQ/a/X+THZsJ4XBwfjajyF52CYnzNeGy0RrcqjjEoxaJApownLIoCelj0cMUb9t6gEgZKvCUhcgkHoRpwypM28qRLFDZsawDo9Sw63aALrbFTPrRuZaFESdYqx4K+PQlpWaMwuJEnG0TdyTdU5IkV9rlUqa/JE6QeZ2MU27d2FQ3U8iR2fds+3wbIEsy2q8BXINlvBQzC8SqOXvIsHkEXgKajkFammLsIHjpkQQ4yy89pSy+K2gnZe+5AlxYe8GXYfAb71f7oj1jbXCJsKrG3dkujMeV70zajy9v0CX4ogm5qjiCEwQUIi29gsJgxiO00kBT+LxB3MxCz/UOawcaboHa6XQ/CqhfIMT5dYzpGN2UKqT8yrrYt+Dkp6q8bs4fJwNKBzgBH/2/O04ASKA/T6l/Bs7w6J3NOf3pO7n/nnCx/Zk7IHC7H3je5O98A'),
-				
-		 	this.addEntry('vertical flow layout', function()
-			{
-		 		return sb.createVertexTemplateFromCells([flow], flow.geometry.width, flow.geometry.height, 'Vertical Flow Layout', true);
-		 	}),
-		 	this.addEntry('horizontal flow layout', function()
-			{
-				var cell = sb.graph.cloneCell(flow);
-				cell.geometry = new mxGeometry(0, 0, 460, 150);
-				cell.style = 'swimlane;html=1;startSize=20;horizontal=0;childLayout=flowLayout;flowOrientation=west;resizable=0;interRankCellSpacing=50;containerType=tree;';
-				cell.value = 'Horizontal Flow Layout';
-				
-				return sb.createVertexTemplateFromCells([cell], cell.geometry.width, cell.geometry.height, 'Horizontal Flow Layout', true);
-			})
+				'vZRBbsIwEEVP470zTquuSVs2ICFxAouMsFUnRrYpCafvJHYILaRiQxaRPG/8Pfnfkpkoqmbp5EGtbYmGiQ8mCmdtiKuqKdAYBlyXTLwzAE4fg8+JbtZ3+UE6rMMjAoiCb2mOGMnGWhOhD61J0J90ZWRN1WKntClXsrXHboAPcvc1VAuHXp9xM0zP/qC1bIhyoiRzYUsNqqEDyjp9tnWQJu0YwbYbkU5Lf4suYDPpuEfJ7hJthcG1tOWky6DiDvEWU+EK9V4lWT5A6SPYX7RjgLRIGd7PU9zkuepiA579l+lNHA/5hPs+kyBd/LXtDJ5lO5+yDXPbzvI5fb9M+RazX/frE31TOT5Jfe/Xi/UD'),
+			addLayoutContainerEntry('vertical tree layout', 'Vertical Tree Layout',
+				'verticalTree',
+				[['Root', 90, 40], ['Child 1', 20, 120], ['Child 2', 160, 120]],
+				[[0, 1], [0, 2]]),
+			addLayoutContainerEntry('horizontal tree layout', 'Horizontal Tree Layout',
+				'horizontalTree',
+				[['Root', 40, 60], ['Child 1', 180, 20], ['Child 2', 180, 100]],
+				[[0, 1], [0, 2]]),
+			// Flow seeds list the tied siblings in the order ELK's model-order
+			// tie-break places them (first Task on top / left) so a drop
+			// converges without moving anything.
+			addLayoutContainerEntry('vertical flow layout', 'Vertical Flow Layout',
+				'verticalFlow',
+				[['Start', 36.67, 40], ['Task', 20, 130], ['Task', 150, 130],
+					['End', 36.67, 220]],
+				[[0, 1], [0, 2], [1, 3], [2, 3]]),
+			addLayoutContainerEntry('horizontal flow layout', 'Horizontal Flow Layout',
+				'horizontalFlow',
+				[['Start', 40, 26.67], ['Task', 190, 20], ['Task', 190, 90],
+					['End', 340, 26.67]],
+				[[0, 1], [0, 2], [1, 3], [2, 3]])
 		]);
 		
 		this.setCurrentSearchEntryLibrary();

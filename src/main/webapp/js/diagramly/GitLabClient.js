@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2006-2020, JGraph Ltd
- * Copyright (c) 2006-2020, draw.io AG
+ * Copyright (c) 2006-2024, JGraph Holdings Ltd
+ * Copyright (c) 2006-2024, draw.io AG
  */
 //Add a closure to hide the class private variables without changing the code a lot
 (function()
@@ -15,6 +15,13 @@ window.GitLabClient = function(editorUi)
 
 // Extends DrawioClient
 mxUtils.extend(GitLabClient, GitHubClient);
+
+/**
+ * Default GitLab server URL. Retained as an immutable class constant so the
+ * "has the URL been overridden?" check is not affected by Init.js mutating
+ * window.DRAWIO_GITLAB_URL in response to the ?gitlab= URL parameter.
+ */
+GitLabClient.DEFAULT_URL = 'https://gitlab.com';
 
 /**
  * Gitlab Client ID, see https://gitlab.com/oauth/applications/135239
@@ -41,13 +48,49 @@ GitLabClient.prototype.maxFileSize = 10000000 /*10MB*/;
  */
 GitLabClient.prototype.authToken = 'Bearer';
 
-GitLabClient.prototype.redirectUri = window.location.protocol + '//' + window.location.host + '/gitlab';
+GitLabClient.prototype.redirectUri = window.DRAWIO_SERVER_URL + 'gitlab';
+
+/**
+ * Sets the token of this client. Overrides GitHubClient.setToken so that the
+ * GitLab token is not stored as the token of the GitHub client.
+ */
+GitLabClient.prototype.setToken = function(token)
+{
+	_token = token;
+};
+
+/**
+ * Adds the authorization header with the GitLab token to the given request
+ * (used in the inherited GitHubClient.updateUser).
+ */
+GitLabClient.prototype.authorizeRequest = function(req)
+{
+	var temp = this.authToken + ' ' + _token;
+
+	req.setRequestHeaders = function(request, params)
+	{
+		request.setRequestHeader('Authorization', temp);
+	};
+};
 
 /**
  * Authorizes the client, gets the userId and calls <open>.
  */
 GitLabClient.prototype.authenticate = function(success, error)
 {
+	if (DRAWIO_GITLAB_URL !== GitLabClient.DEFAULT_URL && !Editor.enableCustomGitLabUrl)
+	{
+		this.ui.showDialog(new CustomGitLabUrlWarningDialog(
+			this.ui, DRAWIO_GITLAB_URL).container, 420, null, true, true);
+
+		if (error != null)
+		{
+			error({message: mxResources.get('accessDenied')});
+		}
+
+		return;
+	}
+
 	var req = new mxXmlRequest(this.redirectUri + '?getState=1', null, 'GET');
 	
 	req.send(mxUtils.bind(this, function(req)
@@ -75,23 +118,28 @@ GitLabClient.prototype.authenticateStep2 = function(state, success, error)
 			
 			if (authRemembered != null)
 			{
-				var req = new mxXmlRequest(this.redirectUri + '?state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname + '&token=' + state), null, 'GET'); //To identify which app/domain is used
+				var req = new mxXmlRequest(this.redirectUri + '?state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.host + '&token=' + state + this.getRedirectPathState()), null, 'GET'); //To identify which app/domain is used
 				
 				req.send(mxUtils.bind(this, function(req)
 				{
 					if (req.getStatus() >= 200 && req.getStatus() <= 299)
 					{
-						_token = JSON.parse(req.getText()).access_token;
-						this.setToken(_token);
-						this.setUser(null);
-						success();
+						try
+						{
+							_token = JSON.parse(req.getText()).access_token;
+							this.setUser(null);
+							success();
+						}
+						catch (e)
+						{
+							error({message: mxResources.get('authFailed'), retry: auth});
+						}
 					}
 					else 
 					{
 						this.clearPersistentToken();
 						this.setUser(null);
 						_token = null;
-						this.setToken(null);
 
 						if (req.getStatus() == 401) // (Unauthorized) [e.g, invalid refresh token]
 						{
@@ -112,7 +160,7 @@ GitLabClient.prototype.authenticateStep2 = function(state, success, error)
 						this.clientId + '&scope=' + this.scope + 
 						'&redirect_uri=' + encodeURIComponent(this.redirectUri) +
 						'&response_type=code&state=' + encodeURIComponent('cId=' + this.clientId + //To identify which app/domain is used
-							'&domain=' + window.location.hostname + '&token=' + state) , 'gitlabauth'); 
+							'&domain=' + window.location.host + '&token=' + state + this.getRedirectPathState()) , 'gitlabauth');
 					
 					if (win != null)
 					{
@@ -135,7 +183,6 @@ GitLabClient.prototype.authenticateStep2 = function(state, success, error)
 									}
 									
 									_token = newAuthInfo.access_token;
-									this.setToken(_token);
 									this.setUser(null);
 									
 									if (remember)
@@ -261,11 +308,6 @@ GitLabClient.prototype.executeRequest = function(req, success, error, ignoreNotF
 				{
 					error({message: this.getErrorMessage(req, mxResources.get('fileNotFound'))});
 				}
-				else if (req.getStatus() === 400)
-				{
-					// Special case: flag to the caller that there was a conflict
-					error({status: 400});
-				}
 				else
 				{
 					error({status: req.getStatus(), message: this.getErrorMessage(req,
@@ -374,7 +416,8 @@ GitLabClient.prototype.getRefIndex = function(tokens, isFolder, success, error, 
 };
 
 /**
- * Checks if the client is authorized and calls the next step.
+ * Loads the file with the given path and passes a GitLabFile, or a
+ * GitLabLibrary if asLibrary is true, to success.
  */
 GitLabClient.prototype.getFile = function(path, success, error, asLibrary, checkExists, knownRefPos)
 {
@@ -391,7 +434,7 @@ GitLabClient.prototype.getFile = function(path, success, error, asLibrary, check
 		
 		// Handles .vsdx, Gliffy and PNG+XML files by creating a temporary file
 		if (!checkExists && (/\.v(dx|sdx?)$/i.test(path) || /\.gliffy$/i.test(path) ||
-			/\.pdf$/i.test(path) || (!this.ui.useCanvasForExport && binary)))
+			/\.pdf$/i.test(path) || (!Editor.useCanvasForExport && binary)))
 		{
 			// Should never be null
 			if (_token != null)
@@ -449,10 +492,9 @@ GitLabClient.prototype.getFile = function(path, success, error, asLibrary, check
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the content of the given file object. Base64 content is decoded
+ * and images and PDFs are converted to data URIs unless a PNG contains a
+ * diagram.
  */
 GitLabClient.prototype.getFileContent = function(data)
 {
@@ -499,10 +541,8 @@ GitLabClient.prototype.getFileContent = function(data)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns a new GitLabFile, or a GitLabLibrary if asLibrary is true, for the
+ * given repository, ref and file object.
  */
 GitLabClient.prototype.createGitLabFile = function(org, repo, ref, data, asLibrary, refPos)
 {
@@ -520,10 +560,10 @@ GitLabClient.prototype.createGitLabFile = function(org, repo, ref, data, asLibra
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Passes a new file with the given filename and data in the folder with the
+ * given ID to success. Asks the user before replacing an existing file.
+ * Libraries are committed immediately while other files are written when
+ * they are saved.
  */
 GitLabClient.prototype.insertFile = function(filename, data, success, error, asLibrary, folderId, base64Encoded)
 {
@@ -536,7 +576,7 @@ GitLabClient.prototype.insertFile = function(filename, data, success, error, asL
 		var org = tokens.slice(0, repoPos).join('/');
 		var repo = tokens[repoPos];
 		var ref = tokens[refPos];
-		path = tokens.slice(refPos + 1, tokens.length).join('/');
+		var path = tokens.slice(refPos + 1, tokens.length).join('/');
 	
 		if (path.length > 0)
 		{
@@ -574,7 +614,10 @@ GitLabClient.prototype.insertFile = function(filename, data, success, error, asL
 							try
 							{
 								var msg = JSON.parse(req.getText());
-								success(this.createGitLabFile(org, repo, ref, msg.content, asLibrary, refPos));
+
+								success(this.createGitLabFile(org, repo, ref,
+									(msg.content != null) ? msg.content : msg,
+									asLibrary, refPos));
 							}
 							catch (e)
 							{
@@ -594,10 +637,10 @@ GitLabClient.prototype.insertFile = function(filename, data, success, error, asL
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Passes true and the last commit ID to fn if the user confirms replacing the
+ * existing file with the given path, or true if the file does not exist. If
+ * askReplace is false, an error is shown for existing files and false is
+ * passed to fn.
  */
 GitLabClient.prototype.checkExists = function(path, askReplace, fn)
 {
@@ -672,10 +715,8 @@ GitLabClient.prototype.writeFile = function(org, repo, ref, path, message, data,
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Commits the data of the given file, as PNG for .png files, with the given
+ * message. If overwrite is true, the latest commit ID is fetched first.
  */
 GitLabClient.prototype.saveFile = function(file, success, error, overwrite, message)
 {
@@ -708,7 +749,7 @@ GitLabClient.prototype.saveFile = function(file, success, error, overwrite, mess
 	
 	var fn2 = mxUtils.bind(this, function()
 	{
-		if (this.ui.useCanvasForExport && /(\.png)$/i.test(path))
+		if (Editor.useCanvasForExport && /(\.png)$/i.test(path))
 		{
 			var p = this.ui.getPngFileProperties(this.ui.fileNode);
 			
@@ -741,11 +782,11 @@ GitLabClient.prototype.saveFile = function(file, success, error, overwrite, mess
 };
 
 /**
- * Checks if the client is authorized and calls the next step.
+ * Shows the GitLab dialog for picking a folder.
  */
 GitLabClient.prototype.pickFolder = function(fn)
 {
-	this.showGitLabDialog(false, fn);
+	this.showGitLabDialog(false, fn, true);
 };
 
 /**
@@ -764,7 +805,7 @@ GitLabClient.prototype.pickFile = function(fn)
 /**
  * LATER: Refactor to use common code with GitHubClient
  */
-GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
+GitLabClient.prototype.showGitLabDialog = function(showFiles, fn, hideNoFilesError)
 {
 	var org = null;
 	var repo = null;
@@ -778,7 +819,6 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 
 	var hd = document.createElement('h3');
 	mxUtils.write(hd, mxResources.get((showFiles) ? 'selectFile' : 'selectFolder'));
-	hd.style.cssText = 'width:100%;text-align:center;margin-top:0px;margin-bottom:12px';
 	content.appendChild(hd);
 
 	var div = document.createElement('div');
@@ -802,7 +842,7 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 	{
 		fn(org + '/' + repo + '/' + encodeURIComponent(ref) + '/' + path);
 	}));
-	this.ui.showDialog(dlg.container, 420, 360, true, true);
+	this.ui.showDialog(dlg.container, 420, 370, true, true);
 	
 	if (showFiles)
 	{
@@ -907,7 +947,7 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 	{
 		if (page == null)
 		{
-			div.innerHTML = '';
+			div.innerText = '';
 			page = 1;
 		}
 		
@@ -941,103 +981,110 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 		
 		this.executeRequest(req, mxUtils.bind(this, function(req)
 		{
-			this.ui.spinner.stop();
-			
-			if (page == 1)
+			this.ui.tryAndHandle(mxUtils.bind(this, function()
 			{
-				updatePathInfo(!ref);
+				this.ui.spinner.stop();
 				
-				div.appendChild(createLink('../ [Up]', mxUtils.bind(this, function()
+				if (page == 1)
 				{
-					if (path == '')
-					{
-						path = null;
-						selectRepo();
-					}
-					else
-					{
-						var tokens = path.split('/');
-						path = tokens.slice(0, tokens.length - 1).join('/');
-						selectFile();
-					}
-				}), '4px'));
-			}
-
-			var files = JSON.parse(req.getText());
-
-			if (files == null || files.length == 0)
-			{
-				mxUtils.write(div, mxResources.get('noFiles'));
-			}
-			else
-			{
-				var gray = true;
-				var count = 0;
-				
-				var listFiles = mxUtils.bind(this, function(showFolders)
-				{
-					for (var i = 0; i < files.length; i++)
-					{
-						(mxUtils.bind(this, function(file)
-						{
-							if (showFolders == (file.type == 'tree'))
-							{
-								var temp = listItem.cloneNode();
-								temp.style.backgroundColor = (gray) ?
-									((uiTheme == 'dark') ? '#000000' : '#eeeeee') : '';
-								gray = !gray;
-
-								var typeImg = document.createElement('img');
-								typeImg.src = IMAGE_PATH + '/' + (file.type == 'tree'? 'folder.png' : 'file.png');
-								typeImg.setAttribute('align', 'absmiddle');
-								typeImg.style.marginRight = '4px';
-								typeImg.style.marginTop = '-4px';
-								typeImg.width = 20;
-								temp.appendChild(typeImg);
-								
-								temp.appendChild(createLink(file.name + ((file.type == 'tree') ? '/' : ''), mxUtils.bind(this, function()
-								{
-									if (file.type == 'tree')
-									{
-										path = file.path;
-										selectFile();
-									}
-									else if (showFiles && file.type == 'blob')
-									{
-										this.ui.hideDialog();
-										fn(org + '/' + repo + '/' + ref + '/' + file.path);
-									}
-								})));
-								
-								div.appendChild(temp);
-								count++;
-							}
-						}))(files[i]);
-					}
-				});
-				
-				listFiles(true);
-				
-				if (showFiles)
-				{
-					listFiles(false);
-				}
-				
-				if (count == pageSize)
-				{
-					div.appendChild(nextPageDiv);
+					updatePathInfo(!ref);
 					
-					scrollFn = function()
+					div.appendChild(createLink('../ [Up]', mxUtils.bind(this, function()
 					{
-						if (div.scrollTop >= div.scrollHeight - div.offsetHeight)
+						if (path == '' || path == null)
 						{
-							nextPage();
+							path = null;
+							selectRepo();
 						}
-					};
-					
-					mxEvent.addListener(div, 'scroll', scrollFn);
+						else
+						{
+							var tokens = path.split('/');
+							path = tokens.slice(0, tokens.length - 1).join('/');
+							selectFile();
+						}
+					}), '4px'));
 				}
-			}
+
+				var files = JSON.parse(req.getText());
+
+				if (files == null || files.length == 0)
+				{
+					if (!hideNoFilesError)
+					{
+						mxUtils.br(div);
+						mxUtils.write(div, mxResources.get('noFiles'));
+					}
+				}
+				else
+				{
+					var gray = true;
+					var count = 0;
+					
+					var listFiles = mxUtils.bind(this, function(showFolders)
+					{
+						for (var i = 0; i < files.length; i++)
+						{
+							(mxUtils.bind(this, function(file)
+							{
+								if (showFolders == (file.type == 'tree'))
+								{
+									var temp = listItem.cloneNode();
+									temp.style.backgroundColor = (gray) ?
+										((Editor.isDarkMode()) ? '#000000' : '#eeeeee') : '';
+									gray = !gray;
+
+									var typeImg = document.createElement('img');
+									typeImg.src = IMAGE_PATH + '/' + (file.type == 'tree'? 'folder.png' : 'file.png');
+									typeImg.setAttribute('align', 'absmiddle');
+									typeImg.style.marginRight = '4px';
+									typeImg.style.marginTop = '-4px';
+									typeImg.width = 20;
+									temp.appendChild(typeImg);
+									
+									temp.appendChild(createLink(file.name + ((file.type == 'tree') ? '/' : ''), mxUtils.bind(this, function()
+									{
+										if (file.type == 'tree')
+										{
+											path = file.path;
+											selectFile();
+										}
+										else if (showFiles && file.type == 'blob')
+										{
+											this.ui.hideDialog();
+											fn(org + '/' + repo + '/' + ref + '/' + file.path);
+										}
+									})));
+									
+									div.appendChild(temp);
+									count++;
+								}
+							}))(files[i]);
+						}
+					});
+					
+					listFiles(true);
+					
+					if (showFiles)
+					{
+						listFiles(false);
+					}
+					
+					if (count == pageSize)
+					{
+						div.appendChild(nextPageDiv);
+						
+						scrollFn = function()
+						{
+							if (div.scrollTop >= div.scrollHeight - div.offsetHeight)
+							{
+								nextPage();
+							}
+						};
+						
+						mxEvent.addListener(div, 'scroll', scrollFn);
+					}
+				}
+			}));
 		}), error, true);
 	});
 
@@ -1045,7 +1092,7 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 	{
 		if (page == null)
 		{
-			div.innerHTML = '';
+			div.innerText = '';
 			page = 1;
 		}
 		
@@ -1079,67 +1126,71 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 		
 		this.executeRequest(req, mxUtils.bind(this, function(req)
 		{
-			this.ui.spinner.stop();
-			
-			if (page == 1)
+			this.ui.tryAndHandle(mxUtils.bind(this, function()
 			{
-				updatePathInfo(true);
+				this.ui.spinner.stop();
 				
-				div.appendChild(createLink('../ [Up]', mxUtils.bind(this, function()
+				if (page == 1)
 				{
-					path = null;
-					selectRepo();
-				}), '4px'));
-			}
+					updatePathInfo(true);
+					
+					div.appendChild(createLink('../ [Up]', mxUtils.bind(this, function()
+					{
+						path = null;
+						selectRepo();
+					}), '4px'));
+				}
 
-			var branches = JSON.parse(req.getText());
-			
-			if (branches == null || branches.length == 0)
-			{
-				mxUtils.write(div, mxResources.get('noFiles'));
-			}
-			else if (branches.length == 1 && auto)
-			{
-				ref = branches[0].name;
-				path = '';
-				selectFile();
-			}
-			else
-			{
-				for (var i = 0; i < branches.length; i++)
-				{
-					(mxUtils.bind(this, function(branch, idx)
-					{
-						var temp = listItem.cloneNode();
-						temp.style.backgroundColor = (idx % 2 == 0) ?
-							((uiTheme == 'dark') ? '#000000' : '#eeeeee') : '';
-						
-						temp.appendChild(createLink(branch.name, mxUtils.bind(this, function()
-						{
-							ref = encodeURIComponent(branch.name);
-							path = '';
-							selectFile();
-						})));
-						
-						div.appendChild(temp);
-					}))(branches[i], i);
-				}
+				var branches = JSON.parse(req.getText());
 				
-				if (branches.length == pageSize)
+				if (branches == null || branches.length == 0)
 				{
-					div.appendChild(nextPageDiv);
-					
-					scrollFn = function()
-					{
-						if (div.scrollTop >= div.scrollHeight - div.offsetHeight)
-						{
-							nextPage();
-						}
-					};
-					
-					mxEvent.addListener(div, 'scroll', scrollFn);
+					mxUtils.br(div);
+					mxUtils.write(div, mxResources.get('repositoryNotFound'));
 				}
-			}
+				else if (branches.length == 1 && auto)
+				{
+					ref = branches[0].name;
+					path = '';
+					selectFile();
+				}
+				else
+				{
+					for (var i = 0; i < branches.length; i++)
+					{
+						(mxUtils.bind(this, function(branch, idx)
+						{
+							var temp = listItem.cloneNode();
+							temp.style.backgroundColor = (idx % 2 == 0) ?
+								((Editor.isDarkMode()) ? '#000000' : '#eeeeee') : '';
+							
+							temp.appendChild(createLink(branch.name, mxUtils.bind(this, function()
+							{
+								ref = encodeURIComponent(branch.name);
+								path = '';
+								selectFile();
+							})));
+							
+							div.appendChild(temp);
+						}))(branches[i], i);
+					}
+					
+					if (branches.length == pageSize)
+					{
+						div.appendChild(nextPageDiv);
+						
+						scrollFn = function()
+						{
+							if (div.scrollTop >= div.scrollHeight - div.offsetHeight)
+							{
+								nextPage();
+							}
+						};
+						
+						mxEvent.addListener(div, 'scroll', scrollFn);
+					}
+				}
+			}));
 		}), error);
 	});
 
@@ -1148,11 +1199,29 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 	
 	var selectRepo = mxUtils.bind(this, function(page)
 	{
+		var spinner = this.ui.spinner;
+		var inFlightRequests = 0;
 		this.ui.spinner.stop();
+		
+		var spinnerRequestStarted = function()
+		{
+			spinner.spin(div, mxResources.get('loading'));
+			inFlightRequests += 1;
+		}
+
+		var spinnerRequestFinished = function()
+		{
+			inFlightRequests -= 1;
+			
+			if (inFlightRequests === 0)
+			{
+				spinner.stop();
+			}
+		}
 		
 		if (page == null)
 		{
-			div.innerHTML = '';
+			div.innerText = '';
 			page = 1;
 		}
 		
@@ -1174,162 +1243,194 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 		
 		var nextPage = mxUtils.bind(this, function()
 		{
-			selectRepo(page + 1);
+			if (inFlightRequests === 0)
+			{
+				selectRepo(page + 1);
+			}
 		});
 		
 		mxEvent.addListener(nextPageDiv, 'click', nextPage);
 
 		var listGroups = mxUtils.bind(this, function(callback)
 		{
-			this.ui.spinner.spin(div, mxResources.get('loading'));
+			spinnerRequestStarted();
 			var req = new mxXmlRequest(this.baseUrl + '/groups?per_page=100', null, 'GET');
 			
 			this.executeRequest(req, mxUtils.bind(this, function(req)
 			{
-				this.ui.spinner.stop();
-				callback(JSON.parse(req.getText()));
+				this.ui.tryAndHandle(mxUtils.bind(this, function()
+				{
+					callback(JSON.parse(req.getText()));
+					spinnerRequestFinished();
+				}));
 			}), error);
 		});
 
 		var listProjects = mxUtils.bind(this, function(group, callback)
 		{
-			this.ui.spinner.spin(div, mxResources.get('loading'));
+			spinnerRequestStarted();
 			var req = new mxXmlRequest(this.baseUrl + '/groups/' + group.id + '/projects?per_page=100', null, 'GET');
-			
+
 			this.executeRequest(req, mxUtils.bind(this, function(req)
 			{
-				this.ui.spinner.stop();
-				callback(group, JSON.parse(req.getText()));
-			}), error);
+				this.ui.tryAndHandle(mxUtils.bind(this, function()
+				{
+					if (req.getStatus() == 404)
+					{
+						callback(group, []);
+					}
+					else
+					{
+						callback(group, JSON.parse(req.getText()));
+					}
+
+					spinnerRequestFinished();
+				}));
+			}), error, true);
 		});
 		
 		listGroups(mxUtils.bind(this, function(groups)
 		{
-			var req = new mxXmlRequest(this.baseUrl + '/users/' + this.user.id + '/projects?per_page=' +
-				pageSize + '&page=' + page, null, 'GET');
-			this.ui.spinner.spin(div, mxResources.get('loading'));
-			
-			this.executeRequest(req, mxUtils.bind(this, function(req)
+			if (this.user == null)
 			{
-				this.ui.spinner.stop();
-				var repos = JSON.parse(req.getText());
+				mxUtils.write(div, mxResources.get('loggedOut'));
+			}
+			else
+			{
+				spinnerRequestStarted();
+				var req = new mxXmlRequest(this.baseUrl + '/users/' + this.user.id + '/projects?per_page=' +
+					pageSize + '&page=' + page, null, 'GET');
+				
+				this.executeRequest(req, mxUtils.bind(this, function(req)
+				{
+					var repos = JSON.parse(req.getText());
 
-				if ((repos == null || repos.length == 0) && (groups == null || groups.length == 0))
-				{
-					mxUtils.write(div, mxResources.get('noFiles'));
-				}
-				else
-				{
-					if (page == 1)
+					if ((repos == null || repos.length == 0) && (groups == null || groups.length == 0))
 					{
-						div.appendChild(createLink(mxResources.get('enterValue') + '...', mxUtils.bind(this, function()
-						{
-							var dlg = new FilenameDialog(this.ui, 'org/repo/ref', mxResources.get('ok'), mxUtils.bind(this, function(value)
-							{
-								if (value != null)
-								{
-									var tokens = value.split('/');
-									
-									if (tokens.length > 1)
-									{
-										org = tokens[0];
-										repo = tokens[1];
-										path = null;
-										ref = null;
-										
-										if (tokens.length > 2)
-										{
-											ref = encodeURIComponent(tokens.slice(2, tokens.length).join('/'));
-											selectFile();
-										}
-										else
-										{
-											selectRef(null, true);
-										}
-									}
-									else
-									{
-										this.ui.spinner.stop();
-										this.ui.handleError({message: mxResources.get('invalidName')});
-									}
-								}
-							}), mxResources.get('enterValue'));
-							this.ui.showDialog(dlg.container, 300, 80, true, false);
-							dlg.init();
-						})));
-						
+						spinnerRequestFinished();
 						mxUtils.br(div);
-						mxUtils.br(div);
+						mxUtils.write(div, mxResources.get('repositoryNotFound'));
 					}
-					
-					var gray = true;
-					
-					for (var i = 0; i < repos.length; i++)
+					else
 					{
-						(mxUtils.bind(this, function(repository, idx)
+						if (page == 1)
 						{
-							var temp = listItem.cloneNode();
-							temp.style.backgroundColor = (idx % 2 == 0) ?
-								((uiTheme == 'dark') ? '#000000' : '#eeeeee') : '';
-							gray = !gray;
-							
-							temp.appendChild(createLink(repository.name_with_namespace, mxUtils.bind(this, function()
+							div.appendChild(createLink(mxResources.get('enterValue') + '...', mxUtils.bind(this, function()
 							{
-								org = repository.owner.username;
-								repo = repository.path;
-								path = '';
-								
-								selectRef(null, true);
+								if (inFlightRequests === 0)
+								{
+									var dlg = new FilenameDialog(this.ui, 'group/project', mxResources.get('ok'),
+										mxUtils.bind(this, function(value)
+									{
+										if (value != null)
+										{
+											var tokens = value.split('/');
+											
+											if (tokens.length > 1)
+											{
+												// Since paths and refs may contain slashes
+												// we parse as group/repo and select ref
+												org = tokens.slice(0, tokens.length - 1).join('/');
+												repo = tokens[tokens.length - 1];
+												path = '';
+												selectRef(null, true);
+											}
+											else
+											{
+												this.ui.spinner.stop();
+												this.ui.handleError({message: mxResources.get('invalidName')});
+											}
+										}
+									}), mxResources.get('enterValue'));
+									this.ui.showDialog(dlg.container, 300, 80, true, false);
+									dlg.init();
+								}
 							})));
 							
-							div.appendChild(temp);
-						}))(repos[i], i);
-					}
-
-					for (var i = 0; i < groups.length; i++)
-					{
-						listProjects(groups[i], (mxUtils.bind(this, function(group, projects)
+							mxUtils.br(div);
+							mxUtils.br(div);
+						}
+						
+						var gray = true;
+						
+						for (var i = 0; i < repos.length; i++)
 						{
-							for (var j = 0; j < projects.length; j++)
+							(mxUtils.bind(this, function(repository)
 							{
 								var temp = listItem.cloneNode();
-								temp.style.backgroundColor = (idx % 2 == 0) ?
-									((uiTheme == 'dark') ? '#000000' : '#eeeeee') : '';
+								temp.style.backgroundColor = (gray) ?
+									((Editor.isDarkMode()) ? '#000000' : '#eeeeee') : '';
 								gray = !gray;
 								
-								(mxUtils.bind(this, function(project)
+								temp.appendChild(createLink(repository.name_with_namespace, mxUtils.bind(this, function()
 								{
-									temp.appendChild(createLink(project.name_with_namespace, mxUtils.bind(this, function()
+									if (inFlightRequests === 0)
 									{
-										org = group.full_path;
-										repo = project.path;
+										org = repository.owner.username;
+										repo = repository.path;
 										path = '';
-	
+										
 										selectRef(null, true);
-									})));
-	
-									div.appendChild(temp);
-								}))(projects[j]);
-							}
-						})));
-					}
-				}
-
-				if (repos.length == pageSize)
-				{
-					div.appendChild(nextPageDiv);
-					
-					scrollFn = function()
-					{
-						if (div.scrollTop >= div.scrollHeight - div.offsetHeight)
-						{
-							nextPage();
+									}
+								})));
+								
+								div.appendChild(temp);
+							}))(repos[i]);
 						}
-					};
-					
-					mxEvent.addListener(div, 'scroll', scrollFn);
-				}
-			}), error);
+
+						for (var i = 0; i < groups.length; i++)
+						{
+							spinnerRequestStarted();
+							
+							listProjects(groups[i], (mxUtils.bind(this, function(group, projects)
+							{
+								spinnerRequestFinished();
+								
+								for (var j = 0; j < projects.length; j++)
+								{
+									var temp = listItem.cloneNode();
+									temp.style.backgroundColor = (gray) ?
+										((Editor.isDarkMode()) ? '#000000' : '#eeeeee') : '';
+									gray = !gray;
+									
+									(mxUtils.bind(this, function(project)
+									{
+										temp.appendChild(createLink(project.name_with_namespace, mxUtils.bind(this, function()
+										{
+											if (inFlightRequests === 0)
+											{
+												org = group.full_path;
+												repo = project.path;
+												path = '';
+												selectRef(null, true);
+											}
+										})));
+		
+										div.appendChild(temp);
+									}))(projects[j]);
+								}
+							})));
+						}
+						
+						spinnerRequestFinished();
+					}
+
+					if (repos.length == pageSize)
+					{
+						div.appendChild(nextPageDiv);
+						
+						scrollFn = function()
+						{
+							if (div.scrollTop >= div.scrollHeight - div.offsetHeight)
+							{
+								nextPage();
+							}
+						};
+						
+						mxEvent.addListener(div, 'scroll', scrollFn);
+					}
+				}), error);
+			}
 		}));
 	});
 
@@ -1337,7 +1438,10 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 	{
 		this.authenticate(mxUtils.bind(this, function()
 		{
-			this.updateUser(function() { selectRepo(); }, error, true);
+			this.updateUser(function()
+			{
+				selectRepo();
+			}, error, true);
 		}), error);
 	}
 	else if (!this.user)
@@ -1359,11 +1463,10 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn)
 GitLabClient.prototype.logout = function()
 {
 	//Send to server to clear refresh token cookie
-	this.ui.editor.loadUrl(this.redirectUri + '?doLogout=1&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname));
+	this.ui.editor.loadUrl(this.redirectUri + '?doLogout=1&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.host));
 	this.clearPersistentToken();
 	this.setUser(null);
 	_token = null;
-	this.setToken(null);
 };
 
 })();

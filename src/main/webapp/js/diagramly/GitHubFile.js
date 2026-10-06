@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2006-2017, JGraph Ltd
- * Copyright (c) 2006-2017, Gaudenz Alder
+ * Copyright (c) 2006-2017, JGraph Holdings Ltd
+ * Copyright (c) 2006-2017, draw.io AG
  */
 GitHubFile = function(ui, data, meta)
 {
@@ -14,10 +14,7 @@ GitHubFile = function(ui, data, meta)
 mxUtils.extend(GitHubFile, DrawioFile);
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Opens the access settings of the repository on GitHub.
  */
 GitHubFile.prototype.share = function()
 {
@@ -27,10 +24,8 @@ GitHubFile.prototype.share = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the ID of the file, which consists of the URI-encoded organization
+ * and repository, the ref and the path.
  */
 GitHubFile.prototype.getId = function()
 {
@@ -41,10 +36,8 @@ GitHubFile.prototype.getId = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the hash of the file, which is the URI-encoded H followed by the
+ * ID.
  */
 GitHubFile.prototype.getHash = function()
 {
@@ -52,20 +45,57 @@ GitHubFile.prototype.getHash = function()
 };
 
 /**
- * Returns true if copy, export and print are not allowed for this file.
+ * Returns the URL of the file on GitHub.
+ */
+GitHubFile.prototype.getFileUrl = function()
+{
+	return 'https://github.com/' + encodeURIComponent(this.meta.org) + '/' +
+		encodeURIComponent(this.meta.repo) + '/blob/' +
+		this.meta.ref + '/' + this.meta.path;
+};
+
+/**
+ * Returns the URL of the folder of the file on GitHub.
+ */
+GitHubFile.prototype.getFolderUrl = function()
+{
+	return 'https://github.com/' + encodeURIComponent(this.meta.org) + '/' +
+		encodeURIComponent(this.meta.repo) + '/tree/' + this.meta.ref + '/' +
+		this.meta.path.split('/').slice(0, -1).join('/');
+};
+
+/**
+ * Passes the download URL of the file to the given function if it can be
+ * accessed without a token, otherwise null.
  */
 GitHubFile.prototype.getPublicUrl = function(fn)
 {
-	// LATER: Check if download_url is always null for private repos
 	if (this.meta.download_url != null)
 	{
-		mxUtils.get(this.meta.download_url, mxUtils.bind(this, function(req)
+		try
 		{
-			fn((req.getStatus() >= 200 && req.getStatus() <= 299) ? this.meta.download_url : null);
-		}), mxUtils.bind(this, function()
+			// Checks for short-term token in URL which means private repo
+			var url = new URL(this.meta.download_url);
+
+			if (url.search != '')
+			{
+				fn(null);
+			}
+			else
+			{
+				mxUtils.get(this.meta.download_url, mxUtils.bind(this, function(req)
+				{
+					fn((req.getStatus() >= 200 && req.getStatus() <= 299) ? this.meta.download_url : null);
+				}), mxUtils.bind(this, function()
+				{
+					fn(null);
+				}));
+			}
+		}
+		catch (e)
 		{
 			fn(null);
-		}));
+		}
 	}
 	else
 	{
@@ -74,7 +104,7 @@ GitHubFile.prototype.getPublicUrl = function(fn)
 };
 
 /**
- * Adds the listener for automatically saving the diagram for local changes.
+ * Returns true if the given error is a conflict (HTTP 409).
  */
 GitHubFile.prototype.isConflict = function(err)
 {
@@ -82,10 +112,7 @@ GitHubFile.prototype.isConflict = function(err)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns App.MODE_GITHUB.
  */
 GitHubFile.prototype.getMode = function()
 {
@@ -93,7 +120,7 @@ GitHubFile.prototype.getMode = function()
 };
 
 /**
- * Overridden to enable the autosave option in the document properties dialog.
+ * Returns false to disable autosave for GitHub files.
  */
 GitHubFile.prototype.isAutosave = function()
 {
@@ -101,10 +128,7 @@ GitHubFile.prototype.isAutosave = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns the name of the file.
  */
 GitHubFile.prototype.getTitle = function()
 {
@@ -112,10 +136,7 @@ GitHubFile.prototype.getTitle = function()
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Returns false since GitHub files cannot be renamed.
  */
 GitHubFile.prototype.isRenamable = function()
 {
@@ -123,7 +144,7 @@ GitHubFile.prototype.isRenamable = function()
 };
 
 /**
- * Adds the listener for automatically saving the diagram for local changes.
+ * Loads the latest version of the file and passes it to success.
  */
 GitHubFile.prototype.getLatestVersion = function(success, error)
 {
@@ -131,18 +152,7 @@ GitHubFile.prototype.getLatestVersion = function(success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
- */
-GitHubFile.prototype.isCompressedStorage = function()
-{
-	return false;
-};
-
-/**
- * Hook for subclassers to update the descriptor from given file
+ * Returns the metadata of the file.
  */
 GitHubFile.prototype.getDescriptor = function()
 {
@@ -158,7 +168,7 @@ GitHubFile.prototype.setDescriptor = function(desc)
 };
 
 /**
- * Adds all listeners.
+ * Returns the SHA from the given descriptor.
  */
 GitHubFile.prototype.getDescriptorEtag = function(desc)
 {
@@ -166,7 +176,7 @@ GitHubFile.prototype.getDescriptorEtag = function(desc)
 };
 
 /**
- * Adds the listener for automatically saving the diagram for local changes.
+ * Sets the SHA of the given descriptor.
  */
 GitHubFile.prototype.setDescriptorEtag = function(desc, etag)
 {
@@ -174,10 +184,7 @@ GitHubFile.prototype.setDescriptorEtag = function(desc, etag)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Saves the file under its current title with the optional commit message.
  */
 GitHubFile.prototype.save = function(revision, success, error, unloading, overwrite, message)
 {
@@ -185,10 +192,7 @@ GitHubFile.prototype.save = function(revision, success, error, unloading, overwr
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Saves the file with the given title.
  */
 GitHubFile.prototype.saveAs = function(title, success, error)
 {
@@ -196,10 +200,8 @@ GitHubFile.prototype.saveAs = function(title, success, error)
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Updates the file data using the extension of the given title and saves
+ * the file with the given title and optional commit message.
  */
 GitHubFile.prototype.doSave = function(title, success, error, unloading, overwrite, message)
 {
@@ -215,10 +217,9 @@ GitHubFile.prototype.doSave = function(title, success, error, unloading, overwri
 };
 
 /**
- * Translates this point by the given vector.
- * 
- * @param {number} dx X-coordinate of the translation.
- * @param {number} dy Y-coordinate of the translation.
+ * Commits the file with the given commit message, or asks for a message
+ * first. If the title has changed, the data is inserted as a new file in a
+ * folder picked by the user, which is then opened.
  */
 GitHubFile.prototype.saveFile = function(title, revision, success, error, unloading, overwrite, message)
 {
@@ -272,9 +273,10 @@ GitHubFile.prototype.saveFile = function(title, revision, success, error, unload
 							
 							if (error != null)
 							{
-								// Passes current commit message to avoid
-								// multiple dialogs after synchronize
-								error({commitMessage: message});
+								// Adds commit message to save after
+								// conflict has been resolved
+								err.commitMessage = message;
+								error(err);
 							}
 						}
 						else if (error != null)

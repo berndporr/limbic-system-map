@@ -1,11 +1,28 @@
+/**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
 function mxGraphMlCodec()
 {
-	this.cachedRefObj = {};
+	this.cachedRefObj = Object.create(null);
 };
 
 
 mxGraphMlCodec.prototype.refRegexp = /^\{y\:GraphMLReference\s+(\d+)\}$/;
 mxGraphMlCodec.prototype.staticRegexp = /^\{x\:Static\s+(.+)\.(.+)\}$/;
+
+/**
+ * Returns the value of the given key in the given map, or null if the map has
+ * no such own property. Reference keys come from the imported file (refid and
+ * ResourceKey attributes) so a bare lookup returns inherited values for
+ * __proto__, constructor and the like, which the caller then treats as a
+ * resolved reference and writes into (prototype pollution).
+ */
+mxGraphMlCodec.prototype.getOwnValue = function(map, key)
+{
+	return (map != null && key != null &&
+		Object.prototype.hasOwnProperty.call(map, key)) ? map[key] : null;
+};
 
 mxGraphMlCodec.prototype.decode = function (xml, callback, onError)
 {
@@ -138,7 +155,7 @@ mxGraphMlCodec.prototype.initializeKeys = function (graphmlElement)
 	this.nodesKeys = {};
 	this.edgesKeys = {};
 	this.portsKeys = {};
-	this.sharedData = {};
+	this.sharedData = Object.create(null);
 	
 	this.nodesKeys[mxGraphMlConstants.NODE_GEOMETRY] = {}; 
 	this.nodesKeys[mxGraphMlConstants.USER_TAGS] = {};
@@ -242,17 +259,26 @@ mxGraphMlCodec.prototype.parseAttributes = function (elem, obj)
 			if (ref)
 			{
 				var key = ref[1];
-				var subObj = this.cachedRefObj[key];
-				
+				var subObj = this.getOwnValue(this.cachedRefObj, key);
+
 				//already cached
-				if (!subObj)
+				if (subObj == null)
 				{
-					subObj = {};
-					subObj[this.sharedData[key].nodeName] = this.dataElem2Obj(this.sharedData[key]);
-					this.cachedRefObj[key] = subObj;
+					var sharedElem = this.getOwnValue(this.sharedData, key);
+
+					//unresolved references are dropped
+					if (sharedElem != null)
+					{
+						subObj = {};
+						subObj[sharedElem.nodeName] = this.dataElem2Obj(sharedElem);
+						this.cachedRefObj[key] = subObj;
+					}
 				}
-				
-				obj[atts[i].nodeName] = subObj;
+
+				if (subObj != null)
+				{
+					obj[atts[i].nodeName] = subObj;
+				}
 			}
 			else if (staticMem)
 			{
@@ -278,17 +304,25 @@ mxGraphMlCodec.prototype.dataElem2Obj = function (elem)
 	if (ref) 
 	{
 		var key = (typeof ref === "string")? ref : ref.getAttribute(mxGraphMlConstants.RESOURCE_KEY);
-		var cachedObj = this.cachedRefObj[key];
-		
+		var cachedObj = this.getOwnValue(this.cachedRefObj, key);
+
 		//already cached
-		if (cachedObj)
+		if (cachedObj != null)
 		{
 			//parse all attributes to update the reference
 			this.parseAttributes(elem, cachedObj);
 			return cachedObj;
 		}
-		
-		elem = this.sharedData[key];
+
+		elem = this.getOwnValue(this.sharedData, key);
+
+		//unresolved reference, keeps the attributes of the referencing element
+		if (elem == null)
+		{
+			this.parseAttributes(origElem, obj);
+			return obj;
+		}
+
 		refKey = key;
 	}
 
@@ -359,7 +393,7 @@ mxGraphMlCodec.prototype.dataElem2Obj = function (elem)
 		var tmpObj = {};
 		//parse all attributes before following the reference
 		this.parseAttributes(origElem, tmpObj);
-		tmpObj[this.sharedData[refKey].nodeName] = obj; 
+		tmpObj[elem.nodeName] = obj;
 		this.cachedRefObj[refKey] = tmpObj;
 		return tmpObj;
 	}
@@ -1921,7 +1955,9 @@ mxGraphMlCodec.prototype.importEdge = function (edgeElement, graph, parent, dx, 
 		else if (desktopEdgeObj)
 		{
 			this.addEdgeStyle(edge, dataObj, style);
-			var absPoints = this.addEdgePath(edge, desktopEdgeObj["y:Path"], style, dx, dy);
+			var curveType = (dataObj["y:BezierEdge"] != null) ? "bezier" :
+							((dataObj["y:QuadCurveEdge"] != null) ? "quad" : null);
+			var absPoints = this.addEdgePath(edge, desktopEdgeObj["y:Path"], style, dx, dy, curveType);
 			
 			if (desktopEdgeObj["y:EdgeLabel"])
 				this.addLabels(edge, desktopEdgeObj["y:EdgeLabel"], style, graph, absPoints);
@@ -1985,7 +2021,7 @@ mxGraphMlCodec.prototype.addEdgeGeo = function (edge, geoObj, dx, dy)
 	}
 };
 
-mxGraphMlCodec.prototype.addEdgePath = function (edge, pathObj, style, dx, dy) 
+mxGraphMlCodec.prototype.addEdgePath = function (edge, pathObj, style, dx, dy, curveType)
 {
 	var absPoints = [];
 	if (pathObj)
@@ -2028,20 +2064,114 @@ mxGraphMlCodec.prototype.addEdgePath = function (edge, pathObj, style, dx, dy)
 			}
 			
 			var points = [];
-			
-			for (var i = 0; i < list.length; i++) 
+
+			for (var i = 0; i < list.length; i++)
 			{
 				var p = new mxPoint(parseFloat(list[i].x) - dx, parseFloat(list[i].y) - dy)
 				points.push(p);
 				absPoints.push(p);
 			}
-			
+
+			//Curve control points are converted to the explicit cubic bezier
+			//layout rendered with the bezier=1 style (see mxPolyline.paintBezierLine)
+			if (curveType == "bezier")
+			{
+				points = this.convertBezierPath(points, absPoints[0], endP);
+			}
+			else if (curveType == "quad")
+			{
+				points = this.convertQuadPath(points, absPoints[0], endP);
+			}
+
 			edge.geometry.points = points;
 		}
-		
+
 		absPoints.push(endP);
 	}
 	return absPoints;
+};
+
+/**
+ * Converts the control points of a yEd bezier edge (y:BezierEdge) to the
+ * explicit cubic bezier layout of the bezier=1 style (geometry points
+ * [cp1, cp2, anchor, cp1, cp2, ...] with the terminal points excluded, so
+ * the total point count including the terminals is 3n+1).
+ *
+ * yFiles BezierEdgeRealizer interprets all bends as off-curve control
+ * points, consumed in pairs, with an implicit on-curve anchor at the
+ * midpoint between consecutive pairs. A single (or odd trailing) control
+ * point defines a quadratic segment, which is degree-elevated to an exact
+ * cubic. srcPoint/trgPoint are the absolute terminal points of the path.
+ */
+mxGraphMlCodec.prototype.convertBezierPath = function (points, srcPoint, trgPoint)
+{
+	var converted = [];
+	var n = points.length;
+	var anchor = srcPoint;
+	var i = 0;
+
+	while (n - i >= 2)
+	{
+		converted.push(points[i]);
+		converted.push(points[i + 1]);
+
+		if (n - i > 2)
+		{
+			anchor = new mxPoint((points[i + 1].x + points[i + 2].x) / 2,
+					(points[i + 1].y + points[i + 2].y) / 2);
+			converted.push(anchor);
+		}
+
+		i += 2;
+	}
+
+	if (n - i == 1)
+	{
+		var q = points[i];
+		converted.push(new mxPoint(anchor.x + 2 * (q.x - anchor.x) / 3,
+				anchor.y + 2 * (q.y - anchor.y) / 3));
+		converted.push(new mxPoint(trgPoint.x + 2 * (q.x - trgPoint.x) / 3,
+				trgPoint.y + 2 * (q.y - trgPoint.y) / 3));
+	}
+
+	return converted;
+};
+
+/**
+ * Converts the control points of a yEd quadratic curve edge
+ * (y:QuadCurveEdge) to the explicit cubic bezier layout of the bezier=1
+ * style. yFiles QuadCurveEdgeRealizer interprets each bend as the control
+ * point of a quadratic segment whose on-curve end points are the midpoints
+ * between consecutive bends (and the edge terminal points). Each quadratic
+ * segment (p0, q, p1) is degree-elevated to an exact cubic with the
+ * control points p0 + 2/3 (q - p0) and p1 + 2/3 (q - p1).
+ */
+mxGraphMlCodec.prototype.convertQuadPath = function (points, srcPoint, trgPoint)
+{
+	var converted = [];
+	var n = points.length;
+	var p0 = srcPoint;
+
+	for (var i = 0; i < n; i++)
+	{
+		var q = points[i];
+		var p1 = (i < n - 1) ? new mxPoint((q.x + points[i + 1].x) / 2,
+				(q.y + points[i + 1].y) / 2) : trgPoint;
+
+		converted.push(new mxPoint(p0.x + 2 * (q.x - p0.x) / 3,
+				p0.y + 2 * (q.y - p0.y) / 3));
+		converted.push(new mxPoint(p1.x + 2 * (q.x - p1.x) / 3,
+				p1.y + 2 * (q.y - p1.y) / 3));
+
+		if (i < n - 1)
+		{
+			converted.push(p1);
+		}
+
+		p0 = p1;
+	}
+
+	return converted;
 };
 
 //TODO improve similarity handling
@@ -2151,7 +2281,11 @@ mxGraphMlCodec.prototype.addEdgeStyle = function (edge, styleObj, styleMap)
 	
 	var arcEdgeStyle = mxUtils.clone(desktopEdge);
 	arcEdgeStyle["defaults"]["curved"] = "1";
-	
+
+	var bezierEdgeStyle = mxUtils.clone(desktopEdge);
+	bezierEdgeStyle["defaults"]["curved"] = "1";
+	bezierEdgeStyle["defaults"]["bezier"] = "1";
+
 	this.mapObject(styleObj, {
 		"yjs:PolylineEdgeStyle": {
 			"defaults" : 
@@ -2205,10 +2339,12 @@ mxGraphMlCodec.prototype.addEdgeStyle = function (edge, styleObj, styleMap)
 		},
 		"y:PolyLineEdge": desktopEdge,
 		"y:GenericEdge": desktopEdge,
-		//We approximate all curved types with curve
+		//Arc and spline types are approximated with the default curve
 		"y:ArcEdge": arcEdgeStyle,
-		"y:BezierEdge": arcEdgeStyle,
-		"y:QuadCurveEdge": arcEdgeStyle,
+		//Bezier and quad curve control points are converted to exact cubic
+		//bezier segments in addEdgePath
+		"y:BezierEdge": bezierEdgeStyle,
+		"y:QuadCurveEdge": bezierEdgeStyle,
 		"y:SplineEdge": arcEdgeStyle
 	}, styleMap);
 };

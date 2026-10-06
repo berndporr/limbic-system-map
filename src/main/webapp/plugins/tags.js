@@ -1,4 +1,8 @@
 /**
+ * Copyright (c) 2020-2025, JGraph Holdings Ltd
+ * Copyright (c) 2020-2025, draw.io AG
+ */
+/**
  * Tags plugin.
  * 
  * - Set tags via dialog
@@ -54,7 +58,6 @@ Draw.loadPlugin(function(editorUi)
 	var HiddenTagsWindow = function(editorUi, x, y, w, h)
 	{
 		var graph = editorUi.editor.graph;
-		var propertyName = 'tags';
 
 		var div = document.createElement('div');
 		div.style.overflow = 'hidden';
@@ -85,78 +88,9 @@ Draw.loadPlugin(function(editorUi)
 		var graph = editorUi.editor.graph;
 		var lastValue = null;
 		
-		function getTagsForCell(cell)
-		{
-			return graph.getAttributeForCell(cell, propertyName, '');
-		};
-
-		function getAllTagsForCells(cells)
-		{
-			var tokens = [];
-			var temp = {};
-			
-			for (var i = 0; i < cells.length; i++)
-			{
-				var tags = getTagsForCell(cells[i]);
-
-				if (tags.length > 0)
-				{
-					var t = tags.toLowerCase().split(' ');
-					
-					for (var j = 0; j < t.length; j++)
-					{
-						if (temp[t[j]] == null)
-						{
-							temp[t[j]] = true;
-							tokens.push(t[j]);
-						}
-					}
-				}
-			}
-			
-			tokens.sort();
-			
-			return tokens;
-		};
-		
-		function getCommonTagsForCells(cells)
-		{
-			var commonTokens = null;
-			var validTags = [];
-			
-			for (var i = 0; i < cells.length; i++)
-			{
-				var tags = getTagsForCell(cells[i]);
-				validTags = [];
-
-				if (tags.length > 0)
-				{
-					var tokens = tags.toLowerCase().split(' ');
-					var temp = {};
-					
-					for (var j = 0; j < tokens.length; j++)
-					{
-						if (commonTokens == null || commonTokens[tokens[j]] != null)
-						{
-							temp[tokens[j]] = true;
-							validTags.push(tokens[j]);
-						}
-					}
-					
-					commonTokens = temp;
-				}
-				else
-				{
-					return [];
-				}
-			}
-		
-			return validTags;
-		};
-		
 		function getLookup(tagList)
 		{
-			var lookup = {};
+			var lookup = Object.create(null);
 			
 			for (var i = 0; i < tagList.length; i++)
 			{
@@ -168,7 +102,7 @@ Draw.loadPlugin(function(editorUi)
 		
 		function getAllTags()
 		{
-			return getAllTagsForCells(graph.model.getDescendants(
+			return graph.getTagsForCells(graph.model.getDescendants(
 				graph.model.getRoot()));
 		};
 
@@ -204,7 +138,7 @@ Draw.loadPlugin(function(editorUi)
 			}
 		};
 		
-		var hiddenTags = {};
+		var hiddenTags = Object.create(null);
 		var hiddenTagCount = 0;
 		var graphIsCellVisible = graph.isCellVisible;
 
@@ -212,12 +146,12 @@ Draw.loadPlugin(function(editorUi)
 		{
 			return graphIsCellVisible.apply(this, arguments) &&
 				(hiddenTagCount == 0 ||
-				!matchTags(getTagsForCell(cell), hiddenTags, hiddenTagCount));
+				!matchTags(graph.getTagsForCell(cell), hiddenTags, hiddenTagCount));
 		};
 		
 		function setCellsVisibleForTag(tag, visible)
 		{
-			var cells = graph.getCellsForTags([tag], null, propertyName, true);
+			var cells = graph.getCellsForTags([tag], null, true);
 			
 			// Ignores layers for selection
 			var temp = [];
@@ -235,7 +169,7 @@ Draw.loadPlugin(function(editorUi)
 
 		function updateSelectedTags(tags, selected, selectedColor, filter)
 		{
-			tagCloud.innerHTML = '';
+			tagCloud.innerText = '';
 			
 			var title = document.createElement('div');
 			title.style.marginBottom = '8px';
@@ -268,7 +202,7 @@ Draw.loadPlugin(function(editorUi)
 					}
 					else
 					{
-						span.style.background = (uiTheme == 'dark') ? 'transparent' : '#ffffff';
+						span.style.background = (Editor.isDarkMode()) ? 'transparent' : '#ffffff';
 					}
 					
 					mxEvent.addListener(span, 'click', (function(tag)
@@ -279,7 +213,7 @@ Draw.loadPlugin(function(editorUi)
 							{
 								if (!graph.isSelectionEmpty())
 								{
-									addTagsToCells(graph.getSelectionCells(), [tag])
+									graph.addTagsForCells(graph.getSelectionCells(), [tag])
 								}
 								else
 								{
@@ -297,7 +231,7 @@ Draw.loadPlugin(function(editorUi)
 							{
 								if (!graph.isSelectionEmpty())
 								{
-									removeTagsFromCells(graph.getSelectionCells(), [tag])
+									graph.removeTagsForCells(graph.getSelectionCells(), [tag])
 								}
 								else
 								{
@@ -341,100 +275,20 @@ Draw.loadPlugin(function(editorUi)
 			}
 			else
 			{
-				updateSelectedTags(getAllTags(), getLookup(getCommonTagsForCells(graph.getSelectionCells())), '#2873e1');
+				updateSelectedTags(getAllTags(), getLookup(graph.getCommonTagsForCells(graph.getSelectionCells())), '#2873e1');
 				searchInput.style.display = '';
 				filterInput.style.display = 'none';
 			}
 		}
 		
 		refreshUi();
-		
-		function addTagsToCells(cells, tagList)
-		{
-			if (cells.length > 0 && tagList.length > 0)
-			{
-				graph.model.beginUpdate();
-				
-				try
-				{
-					for (var i = 0; i < cells.length; i++)
-					{
-						var temp = getTagsForCell(cells[i]);
-						var tags = temp.toLowerCase().split(' ');
-						
-						for (var j = 0; j < tagList.length; j++)
-						{
-							var tag = tagList[j];
-							var changed = false;
-		
-							if (tags.length == 0 || mxUtils.indexOf(tags, tag) < 0)
-							{
-								temp = (temp.length > 0) ? temp + ' ' + tag : tag;
-								changed = true;
-							}
-						}
-						
-						if (changed)
-						{
-							graph.setAttributeForCell(cells[i], 'tags', temp);
-						}
-					}
-				}
-				finally
-				{
-					graph.model.endUpdate();
-				}
-			}
-		};
 
-		function removeTagsFromCells(cells, tagList)
-		{
-			if (cells.length > 0 && tagList.length > 0)
-			{
-				graph.model.beginUpdate();
-				
-				try
-				{
-					for (var i = 0; i < cells.length; i++)
-					{
-						var tags = getTagsForCell(cells[i]);
-						
-						if (tags.length > 0)
-						{
-							var tokens = tags.split(' ');
-							var changed = false;
-							
-							for (var j = 0; j < tagList.length; j++)
-							{
-								var idx = mxUtils.indexOf(tokens, tagList[j]);
-								
-								if (idx >= 0)
-								{
-									tokens.splice(idx, 1);
-									changed = true;
-								}
-							}
-
-							if (changed)
-							{
-								graph.setAttributeForCell(cells[i], 'tags', tokens.join(' '));
-							}
-						}
-					}
-				}
-				finally
-				{
-					graph.model.endUpdate();
-				}
-			}
-		};
-		
-		graph.selectionModel.addListener(mxEvent.EVENT_CHANGE, function(sender, evt)
+		graph.selectionModel.addListener(mxEvent.CHANGE, function(sender, evt)
 		{
 			refreshUi();
 		});
 		
-		graph.model.addListener(mxEvent.EVENT_CHANGE, function(sender, evt)
+		graph.model.addListener(mxEvent.CHANGE, function(sender, evt)
 		{
 			refreshUi();
 		});
@@ -449,7 +303,7 @@ Draw.loadPlugin(function(editorUi)
 			// Ctrl or Cmd keys
 			if (evt.keyCode == 13)
 			{
-				addTagsToCells(graph.getSelectionCells(), searchInput.value.toLowerCase().split(' '));
+				graph.addTagsForCells(graph.getSelectionCells(), searchInput.value.toLowerCase().split(' '));
 				searchInput.value = '';
 			}
 		});
