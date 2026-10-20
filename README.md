@@ -3,9 +3,11 @@
 [DOI:10.5281/zenodo.3740761](https://doi.org/10.5281/zenodo.3740761)
 
 This is the underlying repository which documents the limbic system
-predominantly of the rat. 
+predominantly of the rat.
 
-![alt tag](screenshot.png)
+[Click here to view the map](https://berndporr.github.io/limbic-system-map/)
+
+[![alt tag](screenshot.png)](https://berndporr.github.io/limbic-system-map/)
 
 ## Document-formats and software used
 
